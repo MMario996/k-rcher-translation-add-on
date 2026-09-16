@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * Config.gs ? Kärcher Translation Add-on (Docs / Sheets / Slides)
+ * Config.gs — Kärcher Translation Add-on (Docs / Sheets / Slides)
  * ============================================================
  *
  * Profile UIDs werden aus ScriptProperties geladen,
@@ -22,33 +22,33 @@ var CONFIG = {
   // Stored as: MT_PROFILE_MARKETING = JSON { uid, label }
   PROFILE_PREFIX: "MT_PROFILE_",
 
-  // Admin usage log ? ID of the external Google Sheet that logs every
+  // Admin usage log — ID of the external Google Sheet that logs every
   // translation run. Set via ADMIN_createUsageLogSheet() or
   // ADMIN_setUsageLogSheetId("SPREADSHEET_ID"). Not shown in the add-on UI.
   PROP_LOG_SHEET_ID: "ADMIN_USAGE_LOG_SHEET_ID",
 
-  // ?? "What's New" one-time popup ======================
+  // 📢 "What's New" one-time popup ======================
   // Shown once per user until they click through. Bump WHATS_NEW_VERSION
   // whenever you want it to reappear for everyone. State is stored in each
-  // user's own UserProperties ? never centrally logged, no admin visibility
+  // user's own UserProperties — never centrally logged, no admin visibility
   // into who has or hasn't seen it.
   PROP_WHATS_NEW_SEEN: "WHATS_NEW_SEEN_VERSION",
   WHATS_NEW_VERSION:   "1.1",
   WHATS_NEW_ITEMS: [
     {
-      title: "?? Translate speaker notes only",
+      title: "🎙️ Translate speaker notes only",
       text:  "A new button in Slides lets you translate just the speaker notes across all slides, without touching the slide content."
     },
     {
-      title: "? Grouped objects now supported",
+      title: "🔗 Grouped objects now supported",
       text:  "Text boxes grouped with each other, or grouped with images and graphics, are now translated automatically in Slides. You no longer need to ungroup them first."
     },
     {
-      title: "? Automatic backup copy",
+      title: "💾 Automatic backup copy",
       text:  "A timestamped backup copy is created automatically before a full-document translation as a fallback. "
     },
     {
-      title: "? Formulas in G-SHEET are left untouched",
+      title: "🔒 Formulas in G-SHEET are left untouched",
       text:  "Cells containing formulas in Google Sheets are now skipped, so a formula is never overwritten with translated text."
     }
   ],
@@ -75,14 +75,14 @@ var CONFIG = {
   REPORT_ISSUE_URL: "https://taskbox.karcher.com/plugins/servlet/desk/portal/97/create/4019",
   REPORT_TRANSISSUE_URL: "https://taskbox.karcher.com/plugins/servlet/desk/portal/97/create/4030",
 
-  // ?? Size limits =====================================
+  // 📐 Size limits =====================================
   MAX_ELEMENTS_WARN:  3000,   // Show warning above this
   MAX_ELEMENTS_BLOCK: 8000    // Block translation above this
 };
 
 var MAX_BATCH = 500;
 
-// ?? Retry settings ==================================
+// 🔁 Retry settings ==================================
 var RETRY_MAX_ATTEMPTS   = 3;
 var RETRY_INITIAL_WAIT   = 2000;  // 2 seconds
 var RETRY_BACKOFF_FACTOR = 2;
@@ -91,7 +91,7 @@ var RETRY_BACKOFF_FACTOR = 2;
 /**
  * Load MT profiles from ScriptProperties.
  * Falls back to hardcoded defaults if nothing is stored yet.
- * Returns object like { MARKETING: { uid, label }, TECHNICAL: { ? }, ? }
+ * Returns object like { MARKETING: { uid, label }, TECHNICAL: { … }, … }
  */
 function getMtProfiles_() {
   var props    = PropertiesService.getScriptProperties().getProperties();

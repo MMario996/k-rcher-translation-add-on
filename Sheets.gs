@@ -1,9 +1,9 @@
 /**
  * ============================================================
- *  Sheets.gs ? Google Sheets translation handlers
- *  v2.1 ? Formula cells are now skipped (never overwritten)
- *  v2.2 ? Backup copy created before full-spreadsheet translation
- *  v2.3 ? Admin usage logging added
+ *  Sheets.gs — Google Sheets translation handlers
+ *  v2.1 — Formula cells are now skipped (never overwritten)
+ *  v2.2 — Backup copy created before full-spreadsheet translation
+ *  v2.3 — Admin usage logging added
  * ============================================================
  */
 
@@ -17,7 +17,7 @@ function getSheetsSelection_() {
 
   for (var r = 0; r < vals.length; r++) {
     for (var c = 0; c < vals[r].length; c++) {
-      if (formulas[r][c]) continue; // Skip formula cells ? never overwrite a formula with translated text
+      if (formulas[r][c]) continue; // Skip formula cells — never overwrite a formula with translated text
       var v = String(vals[r][c]).trim();
       if (v && isNaN(vals[r][c])) cells.push({ row: r, col: c, text: v });
     }
@@ -50,7 +50,7 @@ function translateEntireSpreadsheet_(mtUid, sourceLang, targetLang) {
 
     for (var r = 0; r < vals.length; r++) {
       for (var c = 0; c < vals[r].length; c++) {
-        if (formulas[r][c]) continue; // Skip formula cells ? never overwrite a formula with translated text
+        if (formulas[r][c]) continue; // Skip formula cells — never overwrite a formula with translated text
         var v = String(vals[r][c]).trim();
         if (v && isNaN(vals[r][c])) {
           cells.push({ row: r, col: c, text: v });
@@ -83,7 +83,7 @@ function translateEntireSpreadsheet_(mtUid, sourceLang, targetLang) {
 }
 
 
-// ?? Handlers =================================
+// 🎛️ Handlers =================================
 
 function handleSheetsSelectionTranslate(e) {
   try {
@@ -91,7 +91,7 @@ function handleSheetsSelectionTranslate(e) {
     resetTranslationStats_();
     var s   = extractSettings_(e);
     var sel = getSheetsSelection_();
-    if (!sel.cells.length) return notify_("?? Please select cells with text first, or use Ctrl+A to select all.");
+    if (!sel.cells.length) return notify_("⚠️ Please select cells with text first, or use Ctrl+A to select all.");
 
     checkSizeLimit_(sel.cells.length, "cells");
 
@@ -110,10 +110,10 @@ function handleSheetsSelectionTranslate(e) {
       engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
     });
 
-    return notify_("? " + sel.cells.length + " cells translated to " + langLabel_(s.targetLang));
+    return notify_("✅ " + sel.cells.length + " cells translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }
 
@@ -126,7 +126,7 @@ function handleSheetsFullTranslate(e) {
 
     var result = translateEntireSpreadsheet_(s.mtUid, s.sourceLang, s.targetLang);
 
-    var msg = "? " + result.count + " cells translated to " + langLabel_(s.targetLang) +
+    var msg = "✅ " + result.count + " cells translated to " + langLabel_(s.targetLang) +
               (backup ? " (Backup: " + backup.name + ")" : "");
 
     logUsage_({
@@ -143,6 +143,6 @@ function handleSheetsFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }

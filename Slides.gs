@@ -1,20 +1,20 @@
 /**
  * ============================================================
- *  Slides.gs ? Google Slides translation handlers
- *  v2.1 ? Run-level formatting preserved after translation
- *  v2.2 ? Merged cell guard added
- *  v2.3 ? Write access check added
- *  v2.4 ? Recursive group traversal (grouped shapes/tables now
+ *  Slides.gs — Google Slides translation handlers
+ *  v2.1 — Run-level formatting preserved after translation
+ *  v2.2 — Merged cell guard added
+ *  v2.3 — Write access check added
+ *  v2.4 — Recursive group traversal (grouped shapes/tables now
  *         translated without needing to ungroup first)
- *  v2.5 ? "Speaker notes only" translation handler added
+ *  v2.5 — "Speaker notes only" translation handler added
  * ============================================================
  */
 
-// ?? Recursive element collector ===============
+// 🌀 Recursive element collector ===============
 //
 //  Walks a list of page elements and pushes translatable groups
 //  into `groups`. If an element is a GROUP, it recurses into its
-//  children ? so shapes/tables nested inside one or more levels
+//  children — so shapes/tables nested inside one or more levels
 //  of grouping (incl. groups mixed with images) are still found.
 
 function collectElementsRecursive_(pageElements, slideNum, groups, isNote) {
@@ -29,7 +29,7 @@ function collectElementsRecursive_(pageElements, slideNum, groups, isNote) {
       var table = el.asTable();
       for (var r = 0; r < table.getNumRows(); r++) {
         for (var c = 0; c < table.getNumColumns(); c++) {
-          // ?? Merged cell guard ==========================
+          // 🛡️ Merged cell guard ==========================
           // Only process the head (upper-left) cell of merged regions.
           try {
             var cell = table.getCell(r, c);
@@ -46,19 +46,19 @@ function collectElementsRecursive_(pageElements, slideNum, groups, isNote) {
       }
 
     } else if (type === SlidesApp.PageElementType.GROUP) {
-      // Grouped shapes/tables/images ? recurse into the group's children.
+      // Grouped shapes/tables/images — recurse into the group's children.
       try {
         collectElementsRecursive_(el.asGroup().getChildren(), slideNum, groups, isNote);
       } catch (e) {
         console.warn("Group on slide " + slideNum + (isNote ? " (notes)" : "") + ": " + e.message);
       }
     }
-    // Other types (IMAGE, LINE, VIDEO, ...) are not translatable ? skipped.
+    // Other types (IMAGE, LINE, VIDEO, ...) are not translatable — skipped.
   });
 }
 
 
-// ?? Selection (current slide, selected shapes) ??
+// 📌 Selection (current slide, selected shapes)
 
 function getSlidesSelection_() {
   var pres   = SlidesApp.getActivePresentation();
@@ -72,7 +72,7 @@ function getSlidesSelection_() {
 }
 
 
-// ?? Entire presentation (all slides + notes) ====
+// 🎞️ Entire presentation (all slides + notes) ====
 
 function getAllPresentationShapes_() {
   var pres   = SlidesApp.getActivePresentation();
@@ -95,7 +95,7 @@ function getAllPresentationShapes_() {
 }
 
 
-// ?? Speaker notes ONLY (all slides, notes pages only) ??
+// 🎤 Speaker notes ONLY (all slides, notes pages only)
 
 function getAllNotesOnly_() {
   var pres   = SlidesApp.getActivePresentation();
@@ -114,7 +114,7 @@ function getAllNotesOnly_() {
 }
 
 
-// ?? Build group with run-snapshot =============
+// 🧱 Build group with run-snapshot =============
 
 function buildGroup_(textRange, slideNum, isNote) {
   var paras = textRange.getParagraphs();
@@ -143,7 +143,7 @@ function buildGroup_(textRange, slideNum, isNote) {
 }
 
 
-// ?? Run snapshot ==============================
+// 📸 Run snapshot ==============================
 
 function snapshotRuns_(para) {
   var runs = [];
@@ -180,7 +180,7 @@ function safeColor_(style) {
 }
 
 
-// ?? Re-apply formatting after setText =========
+// 🎨 Re-apply formatting after setText =========
 
 function reapplyRunFormatting_(textRange, entry, translatedText) {
   var runs = entry.runs;
@@ -234,7 +234,7 @@ function applySlideStyle_(range, run) {
 }
 
 
-// ?? Core translate ============================
+// 🔁 Core translate ============================
 
 function translateGroups_(groups, mtUid, sourceLang, targetLang) {
   if (!groups.length) return 0;
@@ -254,7 +254,7 @@ function translateGroups_(groups, mtUid, sourceLang, targetLang) {
 
   var allTranslations = batchTranslate_(mtUid, allTexts, sourceLang, targetLang);
 
-  // Apply ? REVERSE order so indices stay valid
+  // Apply — REVERSE order so indices stay valid
   groups.forEach(function(group) {
     var entries = group.entries.slice().reverse();
     entries.forEach(function(entry) {
@@ -265,7 +265,7 @@ function translateGroups_(groups, mtUid, sourceLang, targetLang) {
         reapplyRunFormatting_(group.textRange, entry, translated);
       } catch (e) {
         if (e.message && e.message.indexOf("upper left") !== -1) {
-          // Merged cell ? skip silently
+          // Merged cell — skip silently
         } else {
           console.warn("setText slide " + group.slideNum +
                        " [" + entry.startIdx + "-" + entry.endIdx + "]: " + e.message);
@@ -278,7 +278,7 @@ function translateGroups_(groups, mtUid, sourceLang, targetLang) {
 }
 
 
-// ?? Handlers =================================
+// 🎛️ Handlers =================================
 
 function handleSlidesSelectionTranslate(e) {
   try {
@@ -286,7 +286,7 @@ function handleSlidesSelectionTranslate(e) {
     resetTranslationStats_();
     var s      = extractSettings_(e);
     var groups = getSlidesSelection_();
-    if (!groups.length) return notify_("?? Please click on a text box to select it first.");
+    if (!groups.length) return notify_("⚠️ Please click on a text box to select it first.");
 
     var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang);
 
@@ -302,10 +302,10 @@ function handleSlidesSelectionTranslate(e) {
       engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
     });
 
-    return notify_("? " + count + " paragraph(s) translated to " + langLabel_(s.targetLang));
+    return notify_("✅ " + count + " paragraph(s) translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }
 
@@ -326,7 +326,7 @@ function handleSlidesFullTranslate(e) {
     var noteCount  = groups.filter(function(g) { return g.isNote; })
                           .reduce(function(n, g) { return n + g.entries.length; }, 0);
 
-    var msg = "? " + paraCount + " paragraph(s) on " + slideCount + " slide(s) translated to " +
+    var msg = "✅ " + paraCount + " paragraph(s) on " + slideCount + " slide(s) translated to " +
       langLabel_(s.targetLang) +
       (noteCount ? " (incl. " + noteCount + " note paragraph(s))" : "") + "." +
       (backup ? " (Backup: " + backup.name + ")" : "");
@@ -345,7 +345,7 @@ function handleSlidesFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }
 
@@ -374,11 +374,11 @@ function handleSlidesNotesOnlyTranslate(e) {
     });
 
     return notify_(
-      "? " + paraCount + " speaker note paragraph(s) across " + slideCount +
+      "✅ " + paraCount + " speaker note paragraph(s) across " + slideCount +
       " slide(s) translated to " + langLabel_(s.targetLang) + "."
     );
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }

@@ -1,11 +1,11 @@
 /**
  * ============================================================
- * Api.gs ? Phrase API wrapper with retry / backoff & Post-Processing
+ * Api.gs — Phrase API wrapper with retry / backoff & Post-Processing
  *          + Gemini fallback when Phrase MT is unavailable (403/429)
  * ============================================================
  */
 
-// ?? Translation run statistics ================
+// 📊 Translation run statistics ================
 //
 //  Tracks whether the current translation run fell back to Gemini.
 //  Handlers call resetTranslationStats_() at the start of a run and
@@ -51,7 +51,7 @@ function callApi_(url, method, payload) {
     var res  = UrlFetchApp.fetch(url, opts);
     var code = res.getResponseCode();
 
-    // ?? Success =================================
+    // ✅ Success =================================
     if (code < 400) {
       var ct = (res.getHeaders()["Content-Type"] || "");
       if (ct.indexOf("application/json") !== -1) {
@@ -61,17 +61,17 @@ function callApi_(url, method, payload) {
       return res.getBlob();
     }
 
-    // ?? Rate limit ? retry with backoff =========
+    // ⏳ Rate limit — retry with backoff =========
     if (code === 429) {
       if (attempt < RETRY_MAX_ATTEMPTS) {
-        console.warn("Phrase API 429 ? waiting " + waitMs + "ms (attempt " + attempt + "/" + RETRY_MAX_ATTEMPTS + ")");
+        console.warn("Phrase API 429 — waiting " + waitMs + "ms (attempt " + attempt + "/" + RETRY_MAX_ATTEMPTS + ")");
         Utilities.sleep(waitMs);
         waitMs *= RETRY_BACKOFF_FACTOR;
         continue;
       }
     }
 
-    // ?? Other error ? throw immediately =========
+    // ⚠️ Other error — throw immediately =========
     var msg = res.getContentText();
     try {
       var j = JSON.parse(msg);
@@ -87,13 +87,13 @@ function callApi_(url, method, payload) {
     } else {
       err = new Error("Phrase API error (" + code + "): " + msg);
     }
-    err.phraseCode = code;   // ? lets callers detect 403 / 429 etc.
+    err.phraseCode = code;   // — lets callers detect 403 / 429 etc.
     throw err;
   }
 }
 
 
-// ?? Translation endpoints =====================
+// 🔁 Translation endpoints =====================
 
 function apiListLanguageAiProfiles_() {
   var data  = callApi_(CONFIG.API_V1 + "/memsourceTranslateProfiles?pageSize=50&includeProjects=false", "get");
@@ -114,7 +114,7 @@ function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang) {
 
   var rawTranslations;   // array of strings, same length & order as `texts`
 
-  // ?? 1) Try Phrase first ======================
+  // 🅿️ 1) Try Phrase first ======================
   try {
     var body = { sourceTexts: texts, to: targetLang };
 
@@ -136,7 +136,7 @@ function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang) {
     });
 
   } catch (phraseErr) {
-    // ?? 2) Fallback to Gemini on suspension / rate-limit / no-translation ??
+    // ⚠️ 2) Fallback to Gemini on suspension / rate-limit / no-translation ⚠️
     var code = phraseErr.phraseCode;
     var fallbackTriggers =
       code === 403 ||                       // access suspended (your screenshot)
@@ -146,12 +146,12 @@ function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang) {
       /no translations/i.test(phraseErr.message || "");
 
     if (!fallbackTriggers) {
-      // Not a fallback-worthy error ? re-throw the original Phrase error
+      // Not a fallback-worthy error — re-throw the original Phrase error
       throw phraseErr;
     }
 
     console.warn(
-      "Phrase MT unavailable (" + (code || "n/a") + ") ? falling back to Gemini. " +
+      "Phrase MT unavailable (" + (code || "n/a") + ") — falling back to Gemini. " +
       "Original error: " + phraseErr.message
     );
 
@@ -160,7 +160,7 @@ function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang) {
     rawTranslations = geminiTranslateTexts_(texts, sourceLang, targetLang);
   }
 
-  // ?? 3) Shared post-processing (protected abbreviations) ??
+  // 🔁 3) Shared post-processing (protected abbreviations)
   return postProcessTranslations_(texts, rawTranslations);
 }
 
@@ -284,7 +284,7 @@ function geminiCallWithRetry_(url, key, payload, expectedCount) {
     }
 
     if ((code === 429 || (code >= 500 && code <= 599)) && attempt < RETRY_MAX_ATTEMPTS) {
-      console.warn("Gemini " + code + " ? waiting " + waitMs + "ms (attempt " +
+      console.warn("Gemini " + code + " — waiting " + waitMs + "ms (attempt " +
                    attempt + "/" + RETRY_MAX_ATTEMPTS + ")");
       Utilities.sleep(waitMs);
       waitMs *= RETRY_BACKOFF_FACTOR;
@@ -297,7 +297,7 @@ function geminiCallWithRetry_(url, key, payload, expectedCount) {
 
 
 // ============================================================
-//  Post-processing (protected abbreviations) ? engine-agnostic
+//  Post-processing (protected abbreviations) — engine-agnostic
 // ============================================================
 
 function postProcessTranslations_(texts, translations) {
@@ -324,7 +324,7 @@ function postProcessTranslations_(texts, translations) {
     "MB", "ME", "MM", "MP", "MR", "MX", "OF", "OP", "OQ", "OS", "TF", "TI", "TO", "TP", "TR"
   ];
 
-  // Performance-Booster: Regex-Ausdr?cke einmalig vorab kompilieren, statt tausendfach in der Schleife!
+  // Performance-Booster: Regex-Ausdrücke einmalig vorab kompilieren, statt tausendfach in der Schleife!
   var compiledRules = protectedAbbrs.map(function(abbr) {
     var escapedAbbr = abbr.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     return {
@@ -335,7 +335,7 @@ function postProcessTranslations_(texts, translations) {
     };
   });
 
-  // ?? Post-Processing-Schleife f?r alle Texte im aktuellen Batch ??
+  // Post-Processing-Schleife für alle Texte im aktuellen Batch
   var finalizedTranslations = translations.map(function(translatedText, index) {
     if (!translatedText || typeof translatedText !== "string") return translatedText;
 
@@ -343,13 +343,13 @@ function postProcessTranslations_(texts, translations) {
     var correctedText = translatedText;
 
     compiledRules.forEach(function(rule) {
-      // Pr?fen, welche Schreibweise im Originaltext exakt vorlag
+      // Prüfen, welche Schreibweise im Originaltext exakt vorlag
       var hasUpper = rule.upperRegex.test(originalText);
       var hasLower = rule.lowerRegex.test(originalText);
 
       if (hasUpper || hasLower) {
 
-        // A) SONDERLOGIK F?R "AKW": Falls die Engine es komplett ?bersetzt hat (z.B. zu NPP oder Nuclear Power Plant)
+        // A) SONDERLOGIK FÜR "AKW": Falls die Engine es komplett übersetzt hat (z.B. zu NPP oder Nuclear Power Plant)
         if (rule.abbr === "AKW") {
           if (hasUpper) {
             correctedText = correctedText.replace(/NPP|Nuclear Power Plant|nuclear power plant/g, "AKW");
@@ -358,7 +358,7 @@ function postProcessTranslations_(texts, translations) {
           }
         }
 
-        // B) ALLGEMEINE ERZWUNGENE KORREKTUR: ?berschreibt falsche Schreibweisen im Zieltext mit der Originalform
+        // B) ALLGEMEINE ERZWUNGENE KORREKTUR: überschreibt falsche Schreibweisen im Zieltext mit der Originalform
         if (hasUpper) {
           correctedText = correctedText.replace(rule.targetRegex, rule.abbr.toUpperCase());
         } else if (hasLower) {
