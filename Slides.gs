@@ -286,7 +286,7 @@ function handleSlidesSelectionTranslate(e) {
     resetTranslationStats_();
     var s      = extractSettings_(e);
     var groups = getSlidesSelection_();
-    if (!groups.length) return notify_("?? Please click on a text box to select it first.");
+    if (!groups.length) return notify_("⚠️ Please click on a text box to select it first.");
 
     var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang);
 
@@ -302,10 +302,10 @@ function handleSlidesSelectionTranslate(e) {
       engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
     });
 
-    return notify_("? " + count + " paragraph(s) translated to " + langLabel_(s.targetLang));
+    return notify_("✅ " + count + " paragraph(s) translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }
 
@@ -326,7 +326,7 @@ function handleSlidesFullTranslate(e) {
     var noteCount  = groups.filter(function(g) { return g.isNote; })
                           .reduce(function(n, g) { return n + g.entries.length; }, 0);
 
-    var msg = "? " + paraCount + " paragraph(s) on " + slideCount + " slide(s) translated to " +
+    var msg = "✅ " + paraCount + " paragraph(s) on " + slideCount + " slide(s) translated to " +
       langLabel_(s.targetLang) +
       (noteCount ? " (incl. " + noteCount + " note paragraph(s))" : "") + "." +
       (backup ? " (Backup: " + backup.name + ")" : "");
@@ -345,7 +345,7 @@ function handleSlidesFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }
 
@@ -374,11 +374,11 @@ function handleSlidesNotesOnlyTranslate(e) {
     });
 
     return notify_(
-      "? " + paraCount + " speaker note paragraph(s) across " + slideCount +
+      "✅ " + paraCount + " speaker note paragraph(s) across " + slideCount +
       " slide(s) translated to " + langLabel_(s.targetLang) + "."
     );
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }

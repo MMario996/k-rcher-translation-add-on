@@ -36,19 +36,19 @@ var CONFIG = {
   WHATS_NEW_VERSION:   "1.1",
   WHATS_NEW_ITEMS: [
     {
-      title: "?? Translate speaker notes only",
+      title: "🎙️ Translate speaker notes only",
       text:  "A new button in Slides lets you translate just the speaker notes across all slides, without touching the slide content."
     },
     {
-      title: "? Grouped objects now supported",
+      title: "🔗 Grouped objects now supported",
       text:  "Text boxes grouped with each other, or grouped with images and graphics, are now translated automatically in Slides. You no longer need to ungroup them first."
     },
     {
-      title: "? Automatic backup copy",
+      title: "💾 Automatic backup copy",
       text:  "A timestamped backup copy is created automatically before a full-document translation as a fallback. "
     },
     {
-      title: "? Formulas in G-SHEET are left untouched",
+      title: "🔒 Formulas in G-SHEET are left untouched",
       text:  "Cells containing formulas in Google Sheets are now skipped, so a formula is never overwritten with translated text."
     }
   ],

@@ -91,7 +91,7 @@ function handleSheetsSelectionTranslate(e) {
     resetTranslationStats_();
     var s   = extractSettings_(e);
     var sel = getSheetsSelection_();
-    if (!sel.cells.length) return notify_("?? Please select cells with text first, or use Ctrl+A to select all.");
+    if (!sel.cells.length) return notify_("⚠️ Please select cells with text first, or use Ctrl+A to select all.");
 
     checkSizeLimit_(sel.cells.length, "cells");
 
@@ -110,10 +110,10 @@ function handleSheetsSelectionTranslate(e) {
       engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
     });
 
-    return notify_("? " + sel.cells.length + " cells translated to " + langLabel_(s.targetLang));
+    return notify_("✅ " + sel.cells.length + " cells translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }
 
@@ -126,7 +126,7 @@ function handleSheetsFullTranslate(e) {
 
     var result = translateEntireSpreadsheet_(s.mtUid, s.sourceLang, s.targetLang);
 
-    var msg = "? " + result.count + " cells translated to " + langLabel_(s.targetLang) +
+    var msg = "✅ " + result.count + " cells translated to " + langLabel_(s.targetLang) +
               (backup ? " (Backup: " + backup.name + ")" : "");
 
     logUsage_({
@@ -143,6 +143,6 @@ function handleSheetsFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }

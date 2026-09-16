@@ -70,7 +70,7 @@ function checkWriteAccess_() {
           doc.getBody().getText(); // safe read
           var access = DriveApp.getFileById(doc.getId()).getAccess(Session.getActiveUser());
           if (hasNoEditAccess_(access)) {
-            throw new Error("?? You don't have edit access to this document. Translation requires editor rights. Please request access from the file owner.");
+            throw new Error("⚠️ You don't have edit access to this document. Translation requires editor rights. Please request access from the file owner.");
           }
           return;
         }
@@ -90,7 +90,7 @@ function checkWriteAccess_() {
         if (ss) {
           var access = DriveApp.getFileById(ss.getId()).getAccess(Session.getActiveUser());
           if (hasNoEditAccess_(access)) {
-            throw new Error("?? You don't have edit access to this spreadsheet. Translation requires editor rights. Please request access from the file owner.");
+            throw new Error("⚠️ You don't have edit access to this spreadsheet. Translation requires editor rights. Please request access from the file owner.");
           }
           return;
         }
@@ -110,7 +110,7 @@ function checkWriteAccess_() {
         if (pres) {
           var access = DriveApp.getFileById(pres.getId()).getAccess(Session.getActiveUser());
           if (hasNoEditAccess_(access)) {
-            throw new Error("?? You don't have edit access to this presentation. Translation requires editor rights. Please request access from the file owner.");
+            throw new Error("⚠️ You don't have edit access to this presentation. Translation requires editor rights. Please request access from the file owner.");
           }
           return;
         }

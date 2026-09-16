@@ -24,7 +24,7 @@ var EXEC_LIMIT_MS_ = 25000;   // 25 s ? leaves 5 s buffer before GAS kills at 30
 function checkTimeLimit_() {
   if (Date.now() - EXEC_START_ > EXEC_LIMIT_MS_) {
     throw new Error(
-      "? Translation timed out after " +
+      "⌛ Translation timed out after " +
       Math.round(EXEC_LIMIT_MS_ / 1000) + " s ? the document is too large " +
       "for a single run. Please select a smaller section and translate it individually."
     );
@@ -369,7 +369,7 @@ function handleDocsSelectionTranslate(e) {
     resetTranslationStats_();
     var s   = extractSettings_(e);
     var sel = DocumentApp.getActiveDocument().getSelection();
-    if (!sel) return notify_("?? Please select text first, or use Ctrl+A to select all.");
+    if (!sel) return notify_("⚠️ Please select text first, or use Ctrl+A to select all.");
 
     var result = translateDocsSelection_(sel, s.mtUid, s.sourceLang, s.targetLang);
 
@@ -384,10 +384,10 @@ function handleDocsSelectionTranslate(e) {
       engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
     });
 
-    return notify_("? " + result.count + " text block(s) translated to " + langLabel_(s.targetLang));
+    return notify_("✅ " + result.count + " text block(s) translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }
 
@@ -401,7 +401,7 @@ function handleDocsFullTranslate(e) {
 
     var result = translateEntireDoc_(s.mtUid, s.sourceLang, s.targetLang);
 
-    var msg = "? " + result.count + " text blocks translated to " + langLabel_(s.targetLang) +
+    var msg = "✅ " + result.count + " text blocks translated to " + langLabel_(s.targetLang) +
               (backup ? " (Backup: " + backup.name + ")" : "");
 
     logUsage_({
@@ -418,6 +418,6 @@ function handleDocsFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
-    return notify_("? " + err.message);
+    return notify_("❌ " + err.message);
   }
 }

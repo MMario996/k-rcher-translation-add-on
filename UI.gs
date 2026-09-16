@@ -1,6 +1,6 @@
 /**
  * ============================================================
- *  Ui.gs ? Card UI (Docs / Sheets / Slides only, no Drive)
+ *  Ui.gs — Card UI (Docs / Sheets / Slides only, no Drive)
  * ============================================================
  */
 
@@ -26,7 +26,7 @@ function onHelp(e) {
 
 // ?? "What's New" one-time popup ===============
 //
-//  Shown once per user (tracked in that user's own UserProperties ? never
+//  Shown once per user (tracked in that user's own UserProperties — never
 //  centrally logged, no admin visibility into who has/hasn't seen it).
 //  Bump CONFIG.WHATS_NEW_VERSION to make it reappear for everyone.
 
@@ -132,7 +132,7 @@ function buildActionSection_(hostApp) {
   // Profile reminder
   section.addWidget(
     CardService.newTextParagraph().setText(
-      "? Make sure to select the correct <b>translation profile</b> before translating and having <b>writing rights</b> for this document or make a local copy of it."
+      "💡 Make sure to select the correct <b>translation profile</b> before translating and having <b>writing rights</b> for this document or make a local copy of it."
     )
   );
   section.addWidget(CardService.newDivider());
@@ -140,7 +140,7 @@ function buildActionSection_(hostApp) {
   if (hostApp === "DOCS") {
     section.addWidget(
       CardService.newTextParagraph().setText(
-        "? <b>Select text</b> to translate a section, or press <b>Ctrl+A</b> (?+A) to select the entire document."
+        "📌 <b>Select text</b> to translate a section, or press <b>Ctrl+A</b> (⌘+A) to select the entire document."
       )
     );
     section.addWidget(CardService.newDivider());
@@ -171,7 +171,7 @@ function buildActionSection_(hostApp) {
   } else if (hostApp === "SHEETS") {
     section.addWidget(
       CardService.newTextParagraph().setText(
-        "? <b>Select cells</b> to translate a range, or press <b>Ctrl+A</b> (?+A) to select the entire sheet."
+        "📌 <b>Select cells</b> to translate a range, or press <b>Ctrl+A</b> (⌘+A) to select the entire sheet."
       )
     );
     section.addWidget(CardService.newDivider());
@@ -202,7 +202,7 @@ function buildActionSection_(hostApp) {
   } else if (hostApp === "SLIDES") {
     section.addWidget(
       CardService.newTextParagraph().setText(
-        "? <b>Select one or more text boxes</b> by clicking on it, then translate the selection or translate all slides at once below."
+        "📌 <b>Select one or more text boxes</b> by clicking on it, then translate the selection or translate all slides at once below."
       )
     );
     section.addWidget(CardService.newDivider());
@@ -306,7 +306,7 @@ function buildHelpFooter_() {
     .addWidget(CardService.newDivider())
     .addWidget(
       CardService.newTextButton()
-        .setText("? HELP")
+        .setText("❓ HELP")
         .setOnClickAction(CardService.newAction().setFunctionName("onHelp"))
     );
 }
@@ -339,9 +339,9 @@ function buildSettingsCard_() {
   var tokenStatus;
   try {
     getToken_();
-    tokenStatus = "API  status ?";
+    tokenStatus = "API  status ✅";
   } catch (_) {
-    tokenStatus = "API  status ?";
+    tokenStatus = "API  status ❌";
   }
   statusSection.addWidget(CardService.newTextParagraph().setText(tokenStatus));
   card.addSection(statusSection);
@@ -353,7 +353,7 @@ function buildSettingsCard_() {
     profileSection.addWidget(
       CardService.newDecoratedText()
         .setTopLabel(p.label + "  ?")
-        .setText("Profile UID: " + p.uid.substring(0, 18) + "?")
+        .setText("Profile UID: " + p.uid.substring(0, 18) + "…")
         .setWrapText(true)
     );
   });
@@ -417,10 +417,10 @@ function createErrorCard_(msg) {
     .setHeader(buildKaercherHeader_("UNKNOWN"))
     .addSection(
       CardService.newCardSection()
-        .addWidget(CardService.newTextParagraph().setText("?  " + msg))
+        .addWidget(CardService.newTextParagraph().setText("❌  " + msg))
         .addWidget(
           CardService.newTextButton()
-            .setText("? BACK")
+            .setText("← BACK")
             .setOnClickAction(CardService.newAction().setFunctionName("onHomepage"))
         )
     )
@@ -434,9 +434,9 @@ function createErrorCard_(msg) {
 
 function buildKaercherHeader_(hostApp) {
   var subtitles = {
-    "DOCS":    "Google Docs  ?  Translate in-place",
-    "SHEETS":  "Google Sheets  ?  Translate in-place",
-    "SLIDES":  "Google Slides  ?  Translate in-place",
+    "DOCS":    "Google Docs  —  Translate in-place",
+    "SHEETS":  "Google Sheets  —  Translate in-place",
+    "SLIDES":  "Google Slides  —  Translate in-place",
     "UNKNOWN": "Powered by Phrase Machine Translation"
   };
   return CardService.newCardHeader()
