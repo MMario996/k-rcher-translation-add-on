@@ -1,15 +1,15 @@
 /**
  * ============================================================
- *  Docs.gs ? Google Docs translation handlers
+ *  Docs.gs — Google Docs translation handlers
  * ============================================================
  *
- *  v2.0 ? Performance-Optimierung:
- *    ? detectDocRuns_()  ? Stepping-Algorithmus (20er-Schritte)
- *    ? mergeAdjacentRuns_() ? Identische Formatierungen zusammenfassen
- *    ? Execution-Time-Guard (25 s) gegen Add-on Timeout
- *    ? MAX_BATCH wird in Config.gs gesetzt (empfohlen: 500)
- *  v2.1 ? Backup copy created before full-document translation
- *  v2.2 ? Admin usage logging added
+ *  v2.0 — Performance-Optimierung:
+ *    • detectDocRuns_()  — Stepping-Algorithmus (20er-Schritte)
+ *    • mergeAdjacentRuns_() — Identische Formatierungen zusammenfassen
+ *    • Execution-Time-Guard (25 s) gegen Add-on Timeout
+ *    • MAX_BATCH wird in Config.gs gesetzt (empfohlen: 500)
+ *  v2.1 — Backup copy created before full-document translation
+ *  v2.2 — Admin usage logging added
  *
  *  Formatierung bleibt 1:1 erhalten (bold, italic, underline,
  *  strikethrough, fontSize, fontFamily, foregroundColor).
@@ -17,22 +17,22 @@
  */
 
 
-// ?? Execution time guard ======================
+// ⏱️ Execution time guard ======================
 var EXEC_START_    = Date.now();
-var EXEC_LIMIT_MS_ = 25000;   // 25 s ? leaves 5 s buffer before GAS kills at 30 s
+var EXEC_LIMIT_MS_ = 25000;   // 25 s — leaves 5 s buffer before GAS kills at 30 s
 
 function checkTimeLimit_() {
   if (Date.now() - EXEC_START_ > EXEC_LIMIT_MS_) {
     throw new Error(
       "⌛ Translation timed out after " +
-      Math.round(EXEC_LIMIT_MS_ / 1000) + " s ? the document is too large " +
+      Math.round(EXEC_LIMIT_MS_ / 1000) + " s — the document is too large " +
       "for a single run. Please select a smaller section and translate it individually."
     );
   }
 }
 
 
-// ?? Selection translation =====================
+// ✏️ Selection translation =====================
 //
 //  Each selected range element (a whole paragraph/list item, or a partial
 //  slice of one) is run-detected and translated as its own text segment,
@@ -101,7 +101,7 @@ function translateDocsSelection_(sel, mtUid, sourceLang, targetLang) {
 }
 
 
-// ?? Full-document translation =================
+// 📄 Full-document translation =================
 
 function translateEntireDoc_(mtUid, sourceLang, targetLang) {
   var doc      = DocumentApp.getActiveDocument();
@@ -169,7 +169,7 @@ function translateEntireDoc_(mtUid, sourceLang, targetLang) {
 }
 
 
-// ?? Apply translated runs back to a doc element ??
+// 🔁 Apply translated runs back to a doc element
 //
 //  Shared by translateEntireDoc_() and translateDocsSelection_(). `el` is
 //  either a whole element (el.partial === false, el.txt gets setText()
@@ -222,7 +222,7 @@ function applyTranslatedRunsToElement_(el, allTranslations) {
 }
 
 
-// ?? Batch translate with time guard ===========
+// ⏱️ Batch translate with time guard ===========
 
 function batchTranslateWithTimeGuard_(mtUid, texts, sourceLang, targetLang) {
   var all = [];
@@ -236,7 +236,7 @@ function batchTranslateWithTimeGuard_(mtUid, texts, sourceLang, targetLang) {
 }
 
 
-// ?? Run detection (stepping algorithm) ========
+// 🔍 Run detection (stepping algorithm) ========
 
 var RUN_DETECT_STEP_ = 20;
 
@@ -301,7 +301,7 @@ function detectDocRuns_(txt, fullText, offset) {
 }
 
 
-// ?? Merge adjacent runs with identical formatting ??
+// 🔀 Merge adjacent runs with identical formatting
 
 function mergeAdjacentRuns_(runs) {
   if (runs.length <= 1) return runs;
@@ -321,7 +321,7 @@ function mergeAdjacentRuns_(runs) {
 }
 
 
-// ?? Attribute helpers =========================
+// 🏷️ Attribute helpers =========================
 
 function getDocAttrsAt_(txt, i) {
   return {
@@ -355,12 +355,12 @@ function applyDocAttrs_(txt, start, end, attrs) {
     if (attrs.fontFamily      !== null) txt.setFontFamily(start, end, attrs.fontFamily);
     if (attrs.foregroundColor !== null) txt.setForegroundColor(start, end, attrs.foregroundColor);
   } catch (e) {
-    console.warn("applyDocAttrs_ at [" + start + "?" + end + "]: " + e.message);
+    console.warn("applyDocAttrs_ at [" + start + "–" + end + "]: " + e.message);
   }
 }
 
 
-// ?? Handlers =================================
+// 🎛️ Handlers =================================
 
 function handleDocsSelectionTranslate(e) {
   EXEC_START_ = Date.now();

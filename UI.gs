@@ -24,7 +24,7 @@ function onHelp(e) {
 }
 
 
-// ?? "What's New" one-time popup ===============
+// 📢 "What's New" one-time popup ===============
 //
 //  Shown once per user (tracked in that user's own UserProperties — never
 //  centrally logged, no admin visibility into who has/hasn't seen it).
@@ -98,7 +98,7 @@ function handleWhatsNewContinue(e) {
 }
 
 
-// ?? Main card =================================
+// 🏠 Main card =================================
 
 function buildMainCard_(e) {
   var settings = getAllUserSettings_();
@@ -122,7 +122,7 @@ function buildMainCardForHost_(hostApp, settings) {
 }
 
 
-// ?? Action section (per host app) =============
+// 🎬 Action section (per host app) =============
 
 function buildActionSection_(hostApp) {
   var section = CardService.newCardSection()
@@ -247,7 +247,7 @@ function buildActionSection_(hostApp) {
 }
 
 
-// ?? Profile section (dynamic from ScriptProperties) ??
+// 👤 Profile section (dynamic from ScriptProperties)
 
 function buildProfileSection_(currentProfile) {
   var profiles = getMtProfiles_();
@@ -267,7 +267,7 @@ function buildProfileSection_(currentProfile) {
 }
 
 
-// ?? Language section (no Auto-Detect) ========
+// 🌐 Language section (no Auto-Detect) ========
 
 function buildLanguageSection_(currentSource, currentTarget) {
   var section = CardService.newCardSection()
@@ -299,7 +299,7 @@ function buildLanguageSection_(currentSource, currentTarget) {
 }
 
 
-// ?? Footer sections ===========================
+// 🔽 Footer sections ===========================
 
 function buildHelpFooter_() {
   return CardService.newCardSection()
@@ -327,7 +327,7 @@ function buildReportSection_() {
 }
 
 
-// ?? Special cards =============================
+// 🃏 Special cards =============================
 
 function buildSettingsCard_() {
   var profiles = getMtProfiles_();
@@ -430,7 +430,7 @@ function createErrorCard_(msg) {
 }
 
 
-// ?? Header & host-app detection ===============
+// 🏷️ Header & host-app detection ===============
 
 function buildKaercherHeader_(hostApp) {
   var subtitles = {
