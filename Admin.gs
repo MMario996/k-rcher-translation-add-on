@@ -19,7 +19,7 @@
 
 function ADMIN_setApiToken() {
   // 1) Paste token here, run, then remove it from code
-  var MY_TOKEN = "VE7ITYTIRgeNlCuyI1mFo9Vv0FQhdO41fapVfihLFtn7dfkWBGx4hjU0QEln81Jxf";
+  var MY_TOKEN = "";
 
   if (!MY_TOKEN || MY_TOKEN === "PASTE_YOUR_PHRASE_API_TOKEN_HERE") {
     throw new Error("? Please paste your Phrase API token into MY_TOKEN first.");
