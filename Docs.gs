@@ -1,7 +1,7 @@
 /**
- * ????????????????????????????????????????????????????????????
+ * ============================================================
  *  Docs.gs ? Google Docs translation handlers
- * ????????????????????????????????????????????????????????????
+ * ============================================================
  *
  *  v2.0 ? Performance-Optimierung:
  *    ? detectDocRuns_()  ? Stepping-Algorithmus (20er-Schritte)
@@ -13,11 +13,11 @@
  *
  *  Formatierung bleibt 1:1 erhalten (bold, italic, underline,
  *  strikethrough, fontSize, fontFamily, foregroundColor).
- * ????????????????????????????????????????????????????????????
+ * ============================================================
  */
 
 
-// ?? Execution time guard ??????????????????????
+// ?? Execution time guard ======================
 var EXEC_START_    = Date.now();
 var EXEC_LIMIT_MS_ = 25000;   // 25 s ? leaves 5 s buffer before GAS kills at 30 s
 
@@ -32,54 +32,76 @@ function checkTimeLimit_() {
 }
 
 
-// ?? Selection helpers ?????????????????????????
+// ?? Selection translation =====================
+//
+//  Each selected range element (a whole paragraph/list item, or a partial
+//  slice of one) is run-detected and translated as its own text segment,
+//  exactly like translateEntireDoc_() does for the whole document. This
+//  avoids joining multi-paragraph selections into a single "\n"-delimited
+//  string and blindly re-splitting the MT/LLM response by line count
+//  (that count is never guaranteed to survive translation), and it means
+//  per-run formatting (bold/italic/...) is preserved within a selection
+//  too, not just for full-document translation.
 
-function getDocsSelection_() {
-  var sel = DocumentApp.getActiveDocument().getSelection();
-  if (!sel) return { text: "", empty: true };
-
-  var parts = [];
-  sel.getRangeElements().forEach(function(re) {
-    var el = re.getElement();
-    if (!el.editAsText) return;
-    var txt = el.editAsText();
-    parts.push(
-      re.isPartial()
-        ? txt.getText().substring(re.getStartOffset(), re.getEndOffsetInclusive() + 1)
-        : txt.getText()
-    );
-  });
-
-  var text = parts.join("\n").trim();
-  return { text: text, empty: text.length === 0 };
-}
-
-function replaceDocsSelection_(translatedText) {
-  var doc = DocumentApp.getActiveDocument();
-  var sel = doc.getSelection();
-  if (!sel) throw new Error("No text selection found.");
-
-  var lines   = translatedText.split("\n");
-  var lineIdx = 0;
+function translateDocsSelection_(sel, mtUid, sourceLang, targetLang) {
+  var elements = [];
 
   sel.getRangeElements().forEach(function(re) {
     var el = re.getElement();
     if (!el.editAsText) return;
-    var txt         = el.editAsText();
-    var replacement = lines[lineIdx] || "";
+    var txt      = el.editAsText();
+    var fullText = txt.getText();
 
-    if (re.isPartial()) {
-      txt.deleteText(re.getStartOffset(), re.getEndOffsetInclusive());
-      txt.insertText(re.getStartOffset(), replacement);
+    var partial = re.isPartial();
+    var startOffset, endOffsetInclusive, segmentText;
+    if (partial) {
+      startOffset        = re.getStartOffset();
+      endOffsetInclusive = re.getEndOffsetInclusive();
+      segmentText        = fullText.substring(startOffset, endOffsetInclusive + 1);
     } else {
-      txt.setText(replacement);
+      startOffset        = 0;
+      endOffsetInclusive = fullText.length - 1;
+      segmentText        = fullText;
     }
-    lineIdx++;
+
+    if (!segmentText.trim()) return;
+
+    var runs = mergeAdjacentRuns_(detectDocRuns_(txt, segmentText, startOffset));
+    if (runs.length) {
+      elements.push({
+        txt: txt, partial: partial,
+        startOffset: startOffset, endOffsetInclusive: endOffsetInclusive,
+        runs: runs
+      });
+    }
   });
+
+  if (!elements.length) throw new Error("No translatable text found in selection.");
+
+  var totalRuns = elements.reduce(function(n, el) { return n + el.runs.length; }, 0);
+  checkSizeLimit_(totalRuns, "text segments");
+
+  var allTexts = [];
+  elements.forEach(function(el) {
+    el.runs.forEach(function(run) {
+      run.batchIdx = allTexts.length;
+      allTexts.push(run.text);
+    });
+  });
+
+  var totalWords       = countWords_(allTexts);
+  var allTranslations  = batchTranslateWithTimeGuard_(mtUid, allTexts, sourceLang, targetLang);
+
+  elements.forEach(function(el) {
+    checkTimeLimit_();
+    applyTranslatedRunsToElement_(el, allTranslations);
+  });
+
+  return { count: elements.length, words: totalWords };
 }
 
 
-// ?? Full-document translation ?????????????????
+// ?? Full-document translation =================
 
 function translateEntireDoc_(mtUid, sourceLang, targetLang) {
   var doc      = DocumentApp.getActiveDocument();
@@ -102,8 +124,8 @@ function translateEntireDoc_(mtUid, sourceLang, targetLang) {
       var txt      = child.editAsText();
       var fullText = txt.getText();
       if (!fullText.trim()) continue;
-      var runs = mergeAdjacentRuns_(detectDocRuns_(txt, fullText));
-      if (runs.length) elements.push({ txt: txt, runs: runs });
+      var runs = mergeAdjacentRuns_(detectDocRuns_(txt, fullText, 0));
+      if (runs.length) elements.push({ txt: txt, partial: false, runs: runs });
 
     } else if (type === TABLE) {
       var table = child.asTable();
@@ -114,8 +136,8 @@ function translateEntireDoc_(mtUid, sourceLang, targetLang) {
           var cellTxt  = cell.editAsText();
           var cellText = cellTxt.getText();
           if (!cellText.trim()) continue;
-          var runs2 = mergeAdjacentRuns_(detectDocRuns_(cellTxt, cellText));
-          if (runs2.length) elements.push({ txt: cellTxt, runs: runs2 });
+          var runs2 = mergeAdjacentRuns_(detectDocRuns_(cellTxt, cellText, 0));
+          if (runs2.length) elements.push({ txt: cellTxt, partial: false, runs: runs2 });
         }
       }
     }
@@ -140,46 +162,67 @@ function translateEntireDoc_(mtUid, sourceLang, targetLang) {
 
   elements.forEach(function(el) {
     checkTimeLimit_();
-
-    var runTranslations = el.runs.map(function(run) {
-      return allTranslations[run.batchIdx] || run.text;
-    });
-
-    for (var ri = 0; ri < runTranslations.length - 1; ri++) {
-      var curr     = runTranslations[ri];
-      var next     = runTranslations[ri + 1];
-      if (!curr || !next) continue;
-
-      var origCurr = el.runs[ri].text;
-      var origNext = el.runs[ri + 1].text;
-
-      var hadSpaceBetween = /\s$/.test(origCurr) || /^\s/.test(origNext);
-      var hasSpaceNow     = /\s$/.test(curr)     || /^\s/.test(next);
-
-      if (hadSpaceBetween && !hasSpaceNow) {
-        runTranslations[ri] = curr + " ";
-      } else if (!hasSpaceNow && /\w$/.test(curr) && /^\w/.test(next)) {
-        runTranslations[ri] = curr + " ";
-      }
-    }
-
-    el.txt.setText(runTranslations.join(""));
-
-    var pos = 0;
-    el.runs.forEach(function(run, idx) {
-      var tText = runTranslations[idx];
-      if (!tText || !tText.length) return;
-      var end = pos + tText.length - 1;
-      applyDocAttrs_(el.txt, pos, end, run.attrs);
-      pos += tText.length;
-    });
+    applyTranslatedRunsToElement_(el, allTranslations);
   });
 
   return { count: elements.length, words: totalWords };
 }
 
 
-// ?? Batch translate with time guard ???????????
+// ?? Apply translated runs back to a doc element ??
+//
+//  Shared by translateEntireDoc_() and translateDocsSelection_(). `el` is
+//  either a whole element (el.partial === false, el.txt gets setText()
+//  wholesale) or a partial range within one (el.partial === true, only
+//  [startOffset, endOffsetInclusive] is replaced via delete+insert so the
+//  untouched rest of the paragraph is left alone).
+
+function applyTranslatedRunsToElement_(el, allTranslations) {
+  var runTranslations = el.runs.map(function(run) {
+    return allTranslations[run.batchIdx] || run.text;
+  });
+
+  for (var ri = 0; ri < runTranslations.length - 1; ri++) {
+    var curr     = runTranslations[ri];
+    var next     = runTranslations[ri + 1];
+    if (!curr || !next) continue;
+
+    var origCurr = el.runs[ri].text;
+    var origNext = el.runs[ri + 1].text;
+
+    var hadSpaceBetween = /\s$/.test(origCurr) || /^\s/.test(origNext);
+    var hasSpaceNow     = /\s$/.test(curr)     || /^\s/.test(next);
+
+    if (hadSpaceBetween && !hasSpaceNow) {
+      runTranslations[ri] = curr + " ";
+    } else if (!hasSpaceNow && /\w$/.test(curr) && /^\w/.test(next)) {
+      runTranslations[ri] = curr + " ";
+    }
+  }
+
+  var joined = runTranslations.join("");
+  var pos;
+
+  if (el.partial) {
+    el.txt.deleteText(el.startOffset, el.endOffsetInclusive);
+    el.txt.insertText(el.startOffset, joined);
+    pos = el.startOffset;
+  } else {
+    el.txt.setText(joined);
+    pos = 0;
+  }
+
+  el.runs.forEach(function(run, idx) {
+    var tText = runTranslations[idx];
+    if (!tText || !tText.length) return;
+    var end = pos + tText.length - 1;
+    applyDocAttrs_(el.txt, pos, end, run.attrs);
+    pos += tText.length;
+  });
+}
+
+
+// ?? Batch translate with time guard ===========
 
 function batchTranslateWithTimeGuard_(mtUid, texts, sourceLang, targetLang) {
   var all = [];
@@ -193,35 +236,41 @@ function batchTranslateWithTimeGuard_(mtUid, texts, sourceLang, targetLang) {
 }
 
 
-// ?? Run detection (stepping algorithm) ????????
+// ?? Run detection (stepping algorithm) ========
 
 var RUN_DETECT_STEP_ = 20;
 
-function detectDocRuns_(txt, fullText) {
+/**
+ * Detects formatting runs across `fullText`, a segment of `txt` that starts
+ * at absolute character index `offset` within `txt` (0 for a whole
+ * paragraph/cell; the selection's startOffset for a partial range).
+ */
+function detectDocRuns_(txt, fullText, offset) {
   if (!fullText || fullText.length === 0) return [];
+  offset = offset || 0;
 
   var len   = fullText.length;
   var runs  = [];
-  var attrs = getDocAttrsAt_(txt, 0);
+  var attrs = getDocAttrsAt_(txt, offset + 0);
   var start = 0;
   var i     = RUN_DETECT_STEP_;
 
   while (i < len) {
-    var a = getDocAttrsAt_(txt, i);
+    var a = getDocAttrsAt_(txt, offset + i);
 
     if (!docAttrsEqual_(a, attrs)) {
       var lo = i - RUN_DETECT_STEP_ + 1;
       if (lo < start + 1) lo = start + 1;
 
       for (var j = lo; j <= i; j++) {
-        var b = getDocAttrsAt_(txt, j);
+        var b = getDocAttrsAt_(txt, offset + j);
         if (!docAttrsEqual_(b, attrs)) {
           runs.push({ text: fullText.substring(start, j), attrs: attrs });
           start = j;
           attrs = b;
 
           for (var k = j + 1; k <= i; k++) {
-            var c = getDocAttrsAt_(txt, k);
+            var c = getDocAttrsAt_(txt, offset + k);
             if (!docAttrsEqual_(c, attrs)) {
               runs.push({ text: fullText.substring(start, k), attrs: attrs });
               start = k;
@@ -238,7 +287,7 @@ function detectDocRuns_(txt, fullText) {
   var remainder = Math.max(start + 1, len - ((len - 1) % RUN_DETECT_STEP_));
   if (remainder < len) {
     for (var m = remainder; m < len; m++) {
-      var d = getDocAttrsAt_(txt, m);
+      var d = getDocAttrsAt_(txt, offset + m);
       if (!docAttrsEqual_(d, attrs)) {
         runs.push({ text: fullText.substring(start, m), attrs: attrs });
         start = m;
@@ -272,7 +321,7 @@ function mergeAdjacentRuns_(runs) {
 }
 
 
-// ?? Attribute helpers ?????????????????????????
+// ?? Attribute helpers =========================
 
 function getDocAttrsAt_(txt, i) {
   return {
@@ -311,18 +360,18 @@ function applyDocAttrs_(txt, start, end, attrs) {
 }
 
 
-// ?? Handlers ?????????????????????????????????
+// ?? Handlers =================================
 
 function handleDocsSelectionTranslate(e) {
+  EXEC_START_ = Date.now();
   try {
     checkWriteAccess_();
     resetTranslationStats_();
     var s   = extractSettings_(e);
-    var sel = getDocsSelection_();
-    if (sel.empty) return notify_("?? Please select text first, or use Ctrl+A to select all.");
+    var sel = DocumentApp.getActiveDocument().getSelection();
+    if (!sel) return notify_("?? Please select text first, or use Ctrl+A to select all.");
 
-    var translations = apiTranslateTexts_(s.mtUid, [sel.text], s.sourceLang, s.targetLang);
-    replaceDocsSelection_(translations[0]);
+    var result = translateDocsSelection_(sel, s.mtUid, s.sourceLang, s.targetLang);
 
     logUsage_({
       hostApp:    "DOCS",
@@ -330,12 +379,12 @@ function handleDocsSelectionTranslate(e) {
       profile:    s.profile,
       sourceLang: s.sourceLang,
       targetLang: s.targetLang,
-      segments:   1,
-      words:      countWords_([sel.text]),
+      segments:   result.count,
+      words:      result.words,
       engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
     });
 
-    return notify_("? Selection translated to " + langLabel_(s.targetLang));
+    return notify_("? " + result.count + " text block(s) translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
     return notify_("? " + err.message);
