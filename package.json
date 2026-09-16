@@ -1,0 +1,12 @@
+{
+  "name": "k-rcher-translation-add-on",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Google Workspace add-on (Apps Script) that translates Docs/Sheets/Slides content via Phrase, with a Gemini fallback.",
+  "scripts": {
+    "test": "node tests/run-all.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

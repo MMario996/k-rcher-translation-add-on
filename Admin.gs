@@ -1,7 +1,7 @@
 /**
- * ????????????????????????????????????????????????????????????
+ * ============================================================
  *  Admin.gs ? Admin & debug functions
- * ????????????????????????????????????????????????????????????
+ * ============================================================
  *
  *  Profile management:
  *    ADMIN_setProfile("MARKETING", "QWh4eGGS2qV81G0YmgE5f7", "Marketing")
@@ -15,7 +15,7 @@
  *    ADMIN_clearUsageLogSheetId()         ? disable logging
  */
 
-// ?? Token management ??????????????????????????
+// ?? Token management ==========================
 
 function ADMIN_setApiToken() {
   // 1) Paste token here, run, then remove it from code
@@ -47,7 +47,7 @@ function ADMIN_debugTokenLocation() {
 }
 
 
-// ?? Profile management (ScriptProperties) ?????
+// ?? Profile management (ScriptProperties) =====
 
 /**
  * Set or update a translation profile.
@@ -118,7 +118,7 @@ function ADMIN_seedDefaultProfiles() {
 }
 
 
-// ?? Phrase API diagnostics ????????????????????
+// ?? Phrase API diagnostics ====================
 
 function ADMIN_listLanguageAiProfiles() {
   console.log("=== Language AI Profiles (from Phrase API) ===");
@@ -148,7 +148,7 @@ function ADMIN_testTranslation() {
   var p = profiles[key];
   console.log("Testing profile: " + p.label + " (" + p.uid + ")");
 
-  var result = apiTranslateTexts_(p.uid, ["K?rcher cleans.", "Power for professionals."], "en", "de");
+  var result = apiTranslateTexts_(p.uid, ["Kärcher cleans.", "Power for professionals."], "en", "de");
   console.log("? Result:");
   result.forEach(function(t, i) { console.log("  [" + i + "] " + t); });
 }
@@ -162,7 +162,7 @@ function ADMIN_updateToOfficialAddonProfiles() {
 }
 
 
-// ?? Usage log administration ??????????????????
+// ?? Usage log administration ==================
 //
 //  The add-on logs every translation run (user email, app, action, profile,
 //  source/target language, segment count, word count, engine used) as a
@@ -184,7 +184,7 @@ function ADMIN_updateToOfficialAddonProfiles() {
  * in ScriptProperties. Run this once during setup.
  */
 function ADMIN_createUsageLogSheet() {
-  var ss = SpreadsheetApp.create("K?rcher Translation Add-on ? Usage Log");
+  var ss = SpreadsheetApp.create("Kärcher Translation Add-on ? Usage Log");
   PropertiesService.getScriptProperties().setProperty(CONFIG.PROP_LOG_SHEET_ID, ss.getId());
 
   console.log("? Log-Sheet erstellt: " + ss.getUrl());
@@ -256,7 +256,7 @@ function ADMIN_addUserColumnToLog() {
 }
 
 
-// ?? "What's New" popup administration ?????????
+// ?? "What's New" popup administration =========
 
 /**
  * Resets the "What's New" popup for YOUR account only (UserProperties),

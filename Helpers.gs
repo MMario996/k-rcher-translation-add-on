@@ -1,10 +1,10 @@
 /**
- * ????????????????????????????????????????????????????????????
+ * ============================================================
  *  Helpers.gs ? Shared utilities (single definition, no dupes)
- * ????????????????????????????????????????????????????????????
+ * ============================================================
  */
 
-// ?? User settings ?????????????????????????????
+// ?? User settings =============================
 
 function getSetting_(key, fallback) {
   return PropertiesService.getUserProperties().getProperty(key) || fallback || "";
@@ -38,11 +38,26 @@ function extractSettings_(e) {
 }
 
 
-// ?? Write access check ????????????????????????
+// ?? Write access check ========================
 //
 //  Call at the start of every translate handler.
 //  Throws a user-friendly error if the file is read-only,
 //  preventing the generic "Something went wrong" add-on error.
+
+// Any access level below this list is read-only for our purposes. Comment-only
+// access (DriveApp.Access.COMMENT) does NOT allow editing content, so it must
+// be rejected here just like VIEW/NONE ? otherwise these users pass this
+// check and only hit a generic, unfriendly Apps Script error once the actual
+// translation tries to write to the file.
+var NO_EDIT_ACCESS_LEVELS_ = [
+  DriveApp.Access.NONE,
+  DriveApp.Access.VIEW,
+  DriveApp.Access.COMMENT
+];
+
+function hasNoEditAccess_(access) {
+  return NO_EDIT_ACCESS_LEVELS_.indexOf(access) !== -1;
+}
 
 function checkWriteAccess_() {
   try {
@@ -54,7 +69,7 @@ function checkWriteAccess_() {
           // Try a no-op name set ? throws if read-only
           doc.getBody().getText(); // safe read
           var access = DriveApp.getFileById(doc.getId()).getAccess(Session.getActiveUser());
-          if (access === DriveApp.Access.VIEW) {
+          if (hasNoEditAccess_(access)) {
             throw new Error("?? You don't have edit access to this document. Translation requires editor rights. Please request access from the file owner.");
           }
           return;
@@ -74,7 +89,7 @@ function checkWriteAccess_() {
         var ss = SpreadsheetApp.getActiveSpreadsheet();
         if (ss) {
           var access = DriveApp.getFileById(ss.getId()).getAccess(Session.getActiveUser());
-          if (access === DriveApp.Access.VIEW) {
+          if (hasNoEditAccess_(access)) {
             throw new Error("?? You don't have edit access to this spreadsheet. Translation requires editor rights. Please request access from the file owner.");
           }
           return;
@@ -94,7 +109,7 @@ function checkWriteAccess_() {
         var pres = SlidesApp.getActivePresentation();
         if (pres) {
           var access = DriveApp.getFileById(pres.getId()).getAccess(Session.getActiveUser());
-          if (access === DriveApp.Access.VIEW) {
+          if (hasNoEditAccess_(access)) {
             throw new Error("?? You don't have edit access to this presentation. Translation requires editor rights. Please request access from the file owner.");
           }
           return;
@@ -140,7 +155,7 @@ function createBackupCopy_(hostApp) {
 }
 
 
-// ?? Admin usage logging ???????????????????????
+// ?? Admin usage logging =======================
 //
 //  Writes one row per translation run to an EXTERNAL Google Sheet
 //  (configured via ADMIN_createUsageLogSheet() / ADMIN_setUsageLogSheetId()
@@ -223,7 +238,7 @@ function countWords_(texts) {
 }
 
 
-// ?? Batch translation with size guard ?????????
+// ?? Batch translation with size guard =========
 
 /**
  * Checks element count against configured limits.
@@ -256,7 +271,7 @@ function batchTranslate_(mtUid, texts, sourceLang, targetLang) {
 }
 
 
-// ?? UI helpers ????????????????????????????????
+// ?? UI helpers ================================
 
 function langLabel_(code) {
   if (code === "auto") return "Auto-detect";
