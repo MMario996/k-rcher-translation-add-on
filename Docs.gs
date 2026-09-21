@@ -43,7 +43,7 @@ function checkTimeLimit_() {
 //  per-run formatting (bold/italic/...) is preserved within a selection
 //  too, not just for full-document translation.
 
-function translateDocsSelection_(sel, mtUid, sourceLang, targetLang) {
+function translateDocsSelection_(sel, mtUid, sourceLang, targetLang, profileKey) {
   var elements = [];
 
   sel.getRangeElements().forEach(function(re) {
@@ -90,7 +90,7 @@ function translateDocsSelection_(sel, mtUid, sourceLang, targetLang) {
   });
 
   var totalWords       = countWords_(allTexts);
-  var allTranslations  = batchTranslateWithTimeGuard_(mtUid, allTexts, sourceLang, targetLang);
+  var allTranslations  = batchTranslateWithTimeGuard_(mtUid, allTexts, sourceLang, targetLang, profileKey);
 
   elements.forEach(function(el) {
     checkTimeLimit_();
@@ -103,7 +103,7 @@ function translateDocsSelection_(sel, mtUid, sourceLang, targetLang) {
 
 // 📄 Full-document translation =================
 
-function translateEntireDoc_(mtUid, sourceLang, targetLang) {
+function translateEntireDoc_(mtUid, sourceLang, targetLang, profileKey) {
   var doc      = DocumentApp.getActiveDocument();
   var body     = doc.getBody();
   var numItems = body.getNumChildren();
@@ -158,7 +158,7 @@ function translateEntireDoc_(mtUid, sourceLang, targetLang) {
 
   var totalWords = countWords_(allTexts);
 
-  var allTranslations = batchTranslateWithTimeGuard_(mtUid, allTexts, sourceLang, targetLang);
+  var allTranslations = batchTranslateWithTimeGuard_(mtUid, allTexts, sourceLang, targetLang, profileKey);
 
   elements.forEach(function(el) {
     checkTimeLimit_();
@@ -224,12 +224,12 @@ function applyTranslatedRunsToElement_(el, allTranslations) {
 
 // ⏱️ Batch translate with time guard ===========
 
-function batchTranslateWithTimeGuard_(mtUid, texts, sourceLang, targetLang) {
+function batchTranslateWithTimeGuard_(mtUid, texts, sourceLang, targetLang, profileKey) {
   var all = [];
   for (var i = 0; i < texts.length; i += MAX_BATCH) {
     checkTimeLimit_();
     var batch  = texts.slice(i, i + MAX_BATCH);
-    var result = apiTranslateTexts_(mtUid, batch, sourceLang, targetLang);
+    var result = apiTranslateTexts_(mtUid, batch, sourceLang, targetLang, profileKey);
     result.forEach(function(t) { all.push(t); });
   }
   return all;
@@ -371,7 +371,7 @@ function handleDocsSelectionTranslate(e) {
     var sel = DocumentApp.getActiveDocument().getSelection();
     if (!sel) return notify_("⚠️ Please select text first, or use Ctrl+A to select all.");
 
-    var result = translateDocsSelection_(sel, s.mtUid, s.sourceLang, s.targetLang);
+    var result = translateDocsSelection_(sel, s.mtUid, s.sourceLang, s.targetLang, s.profile);
 
     logUsage_({
       hostApp:    "DOCS",
@@ -381,7 +381,7 @@ function handleDocsSelectionTranslate(e) {
       targetLang: s.targetLang,
       segments:   result.count,
       words:      result.words,
-      engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
+      engine:     engineLabel_()
     });
 
     return notify_("✅ " + result.count + " text block(s) translated to " + langLabel_(s.targetLang));
@@ -399,7 +399,7 @@ function handleDocsFullTranslate(e) {
     var s      = extractSettings_(e);
     var backup = createBackupCopy_("DOCS");
 
-    var result = translateEntireDoc_(s.mtUid, s.sourceLang, s.targetLang);
+    var result = translateEntireDoc_(s.mtUid, s.sourceLang, s.targetLang, s.profile);
 
     var msg = "✅ " + result.count + " text blocks translated to " + langLabel_(s.targetLang) +
               (backup ? " (Backup: " + backup.name + ")" : "");
@@ -412,7 +412,7 @@ function handleDocsFullTranslate(e) {
       targetLang: s.targetLang,
       segments:   result.count,
       words:      result.words,
-      engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
+      engine:     engineLabel_()
     });
 
     return notify_(msg);

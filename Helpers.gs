@@ -260,11 +260,11 @@ function checkSizeLimit_(count, entityLabel) {
   }
 }
 
-function batchTranslate_(mtUid, texts, sourceLang, targetLang) {
+function batchTranslate_(mtUid, texts, sourceLang, targetLang, profileKey) {
   var all = [];
   for (var i = 0; i < texts.length; i += MAX_BATCH) {
     var batch  = texts.slice(i, i + MAX_BATCH);
-    var result = apiTranslateTexts_(mtUid, batch, sourceLang, targetLang);
+    var result = apiTranslateTexts_(mtUid, batch, sourceLang, targetLang, profileKey);
     result.forEach(function(t) { all.push(t); });
   }
   return all;
@@ -276,6 +276,17 @@ function batchTranslate_(mtUid, texts, sourceLang, targetLang) {
 function langLabel_(code) {
   if (code === "auto") return "Auto-detect";
   return CONFIG.LANGUAGES[code] || code;
+}
+
+/**
+ * Engine label for the admin usage log, reflecting both which MT engine
+ * produced the translation and whether the Gemini post-edit pass (see
+ * geminiPostEditTexts_ in Api.gs) actually changed anything.
+ */
+function engineLabel_() {
+  var label = TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase";
+  if (TRANSLATION_STATS_.usedGeminiPostEdit) label += " + Gemini PE";
+  return label;
 }
 
 function notify_(msg) {
