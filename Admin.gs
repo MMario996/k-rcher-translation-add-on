@@ -282,6 +282,95 @@ function ADMIN_isGeminiPostEditEnabled() {
 }
 
 
+// 🧪 Gemini test functions =======================
+//
+//  Three levels, run whichever answers your question:
+//   1. ADMIN_testGeminiConnection()  — is GEMINI_API_KEY valid & the
+//      endpoint reachable at all? (no translation logic involved)
+//   2. ADMIN_testGeminiTranslation() — does the translation FALLBACK
+//      (geminiTranslateTexts_) work end-to-end?
+//   3. ADMIN_testGeminiPostEdit()    — does the PE review pass
+//      (geminiPostEditTexts_) actually run and improve a segment?
+//
+//  Run via the Apps Script editor: pick the function from the dropdown
+//  next to "Run", click Run, then View → Logs (or Ctrl+Enter) for output.
+
+function ADMIN_testGeminiConnection() {
+  try {
+    var key   = getGeminiKey_();
+    var model = GEMINI_FALLBACK_MODEL;
+    var url   = GEMINI_BASE_URL + "/v1beta/models/" + model + ":generateContent";
+
+    var res = UrlFetchApp.fetch(url, {
+      method: "post", contentType: "application/json", muteHttpExceptions: true,
+      headers: { "x-api-key": key, "Accept": "application/json" },
+      payload: JSON.stringify({ contents: [{ parts: [{ text: "Reply with exactly one word: OK" }] }] })
+    });
+
+    var code = res.getResponseCode();
+    if (code >= 400) {
+      console.error("❌ Gemini antwortet mit " + code + ": " + res.getContentText().substring(0, 300));
+      return { success: false, code: code };
+    }
+
+    var json  = JSON.parse(res.getContentText());
+    var reply = json.candidates[0].content.parts[0].text.trim();
+    console.log("✅ Gemini ist erreichbar. Modell: " + model + " | Antwort: \"" + reply + "\"");
+    return { success: true, model: model, reply: reply };
+  } catch (e) {
+    console.error("❌ Gemini-Verbindungstest fehlgeschlagen: " + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function ADMIN_testGeminiTranslation() {
+  try {
+    var texts = ["Kärcher cleans surfaces reliably.", "Power for professionals."];
+    console.log("Teste geminiTranslateTexts_ direkt (EN → DE)...");
+    var translated = geminiTranslateTexts_(texts, "en", "de");
+    texts.forEach(function(t, i) {
+      console.log("  [" + i + "] " + t + "  →  " + translated[i]);
+    });
+    console.log("✅ Gemini-Übersetzungs-Fallback funktioniert.");
+    return { success: true, translations: translated };
+  } catch (e) {
+    console.error("❌ Gemini-Übersetzung fehlgeschlagen: " + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function ADMIN_testGeminiPostEdit() {
+  try {
+    if (!isGeminiPostEditEnabled_()) {
+      console.warn("⚠️ Gemini Post-Editing ist aktuell DEAKTIVIERT (GEMINI_PE_ENABLED=false) — " +
+                   "der Test läuft trotzdem, aber im echten Betrieb würde dieser Pass übersprungen.");
+    }
+
+    // Bewusst leicht holprig formuliert, damit ein sichtbarer Unterschied zu erwarten ist.
+    var sourceTexts  = ["The pump is ready for operation."];
+    var translations = ["Die Pumpe ist bereit für den Betrieb."];
+
+    console.log("Teste geminiPostEditTexts_ direkt (Profil: TECHNICAL)...");
+    var result = geminiPostEditTexts_(sourceTexts, translations, "en", "de", "TECHNICAL");
+
+    console.log("  Vorher:  " + translations[0]);
+    console.log("  Nachher: " + result[0]);
+
+    if (result[0] !== translations[0]) {
+      console.log("✅ Gemini PE hat den Text verändert — der Pass funktioniert.");
+    } else {
+      console.warn("⚠️ Gemini PE hat nichts verändert. Das kann heißen: Text war schon gut genug, " +
+                   "ODER der Pass ist deaktiviert/kein Key konfiguriert/ein Fehler trat auf " +
+                   "(siehe eventuelle Warn-Logs von geminiPostEditTexts_ oben).");
+    }
+    return { success: true, before: translations[0], after: result[0] };
+  } catch (e) {
+    console.error("❌ Gemini Post-Edit Test fehlgeschlagen: " + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+
 // 🔔 "What's New" popup administration =========
 
 /**
