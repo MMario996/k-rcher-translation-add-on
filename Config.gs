@@ -37,27 +37,11 @@ var CONFIG = {
   WHATS_NEW_ITEMS: [
     {
       title: "✨ Better translation quality",
-      text:  "Translations now go through an extra AI review step that catches mistranslations and cleans up awkward phrasing before they reach your document."
+      text:  "Translations now go through an extra AI review step that catches mistranslations and cleans up awkward phrasing before they reach your document. This can make translations take a moment longer."
     },
     {
       title: "🎯 Translate selected slides",
       text:  "In Slides, select one or more slides in the panel on the left, then hit \"Transl. Selected Slides\" to translate just those — the rest of the deck is left alone."
-    },
-    {
-      title: "🎙️ Translate speaker notes only",
-      text:  "A new button in Slides lets you translate just the speaker notes across all slides, without touching the slide content."
-    },
-    {
-      title: "🔗 Grouped objects now supported",
-      text:  "Text boxes grouped with each other, or grouped with images and graphics, are now translated automatically in Slides. You no longer need to ungroup them first."
-    },
-    {
-      title: "💾 Automatic backup copy",
-      text:  "A timestamped backup copy is created automatically before a full-document translation as a fallback. "
-    },
-    {
-      title: "🔒 Formulas in G-SHEET are left untouched",
-      text:  "Cells containing formulas in Google Sheets are now skipped, so a formula is never overwritten with translated text."
     }
   ],
 
