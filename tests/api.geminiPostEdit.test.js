@@ -151,22 +151,26 @@ test('splits segments into parallel batches of GEMINI_PE_BATCH_SIZE and fires th
   assert.equal(fetchAllCalls.length, 3);
 });
 
-test('uses the MARKETING PE prompt for a MARKETING profile and TECHNICAL otherwise', () => {
-  const { ctx: marketingCtx, fetchAllCalls: marketingCalls } = loadCtx(
-    { GEMINI_API_KEY: 'test-key' },
-    () => geminiJsonResponse([])
-  );
-  marketingCtx.geminiPostEditTexts_(['Clean power.'], ['Saubere Kraft.'], 'en', 'de', 'MARKETING');
-  const marketingPayload = JSON.parse(marketingCalls[0].payload);
-  const marketingPrompt = marketingPayload.contents[0].parts[0].text;
-  assert.match(marketingPrompt, /KÄRCHER MARKETING/);
+test('picks the matching PE prompt per profile: MARKETING, TECHNICAL, GENERAL', () => {
+  const cases = [
+    { profile: 'MARKETING', expect: /KÄRCHER MARKETING/ },
+    { profile: 'TECHNICAL', expect: /TECHNISCHE DOKUMENTATION/ },
+    { profile: 'GENERAL',   expect: /KÄRCHER ALLGEMEIN/ }
+  ];
 
-  const { ctx: generalCtx, fetchAllCalls: generalCalls } = loadCtx(
-    { GEMINI_API_KEY: 'test-key' },
-    () => geminiJsonResponse([])
-  );
-  generalCtx.geminiPostEditTexts_(['Clean power.'], ['Saubere Kraft.'], 'en', 'de', 'GENERAL');
-  const generalPayload = JSON.parse(generalCalls[0].payload);
-  const generalPrompt = generalPayload.contents[0].parts[0].text;
-  assert.match(generalPrompt, /TECHNISCHE DOKUMENTATION/);
+  cases.forEach(({ profile, expect }) => {
+    const { ctx, fetchAllCalls } = loadCtx({ GEMINI_API_KEY: 'test-key' }, () => geminiJsonResponse([]));
+    ctx.geminiPostEditTexts_(['Clean power.'], ['Saubere Kraft.'], 'en', 'de', profile);
+    const payload = JSON.parse(fetchAllCalls[0].payload);
+    const prompt = payload.contents[0].parts[0].text;
+    assert.match(prompt, expect, `profile ${profile} should use its own PE prompt`);
+  });
+});
+
+test('falls back to the TECHNICAL PE prompt for an unknown/unset profile', () => {
+  const { ctx, fetchAllCalls } = loadCtx({ GEMINI_API_KEY: 'test-key' }, () => geminiJsonResponse([]));
+  ctx.geminiPostEditTexts_(['Clean power.'], ['Saubere Kraft.'], 'en', 'de', 'SOME_UNKNOWN_PROFILE');
+  const payload = JSON.parse(fetchAllCalls[0].payload);
+  const prompt = payload.contents[0].parts[0].text;
+  assert.match(prompt, /TECHNISCHE DOKUMENTATION/);
 });

@@ -325,8 +325,7 @@ var GEMINI_PE_MODEL      = "gemini-3.6-flash";
 var GEMINI_PE_BATCH_SIZE = 25;
 
 // Keyed by the add-on's profile keys (CONFIG.MT_PROFILE_DEFAULTS: MARKETING /
-// TECHNICAL / GENERAL). GENERAL has no dedicated tone, so it reuses the
-// TECHNICAL prompt (precise corrections, no stylistic risk) — see
+// TECHNICAL / GENERAL). Any other/unset key falls back to TECHNICAL — see
 // getPePromptForProfile_() below.
 var GEMINI_PE_PROMPTS_ = {
   TECHNICAL:
@@ -382,7 +381,33 @@ var GEMINI_PE_PROMPTS_ = {
     "- Kampagnen-Hashtags und Social-Media-Handles\n\n" +
     "WICHTIG: Marketing-Texte brauchen Energie und Überzeugungskraft.\n" +
     "Eine korrekte aber flache Übersetzung ist nicht ausreichend — sei mutig und\n" +
-    "wähle die Formulierung die in der Zielsprache wirklich überzeugt."
+    "wähle die Formulierung die in der Zielsprache wirklich überzeugt.",
+
+  GENERAL:
+    "=== POST-EDITIERUNG (PE) — KÄRCHER ALLGEMEIN ===\n\n" +
+    "AUFTRAG: Du bist ein professioneller Übersetzer/Post-Editor bei Kärcher.\n" +
+    "Du erhältst maschinell übersetzte Segmente aus allgemeinen Texten ohne festen\n" +
+    "Dokumenttyp (z. B. interne Kommunikation, E-Mails, Präsentationen, allgemeine\n" +
+    "Inhalte) und verbesserst diese aktiv auf Publikationsqualität.\n\n" +
+    "PFLICHT-KORREKTUREN (immer prüfen und ggf. korrigieren):\n" +
+    "1. PRODUKTNAMEN: \"Kärcher\" immer mit Umlaut. Produktnamen strukturell unverändert.\n" +
+    "2. ZAHLEN & EINHEITEN: Niemals Zahlen, Maßeinheiten, Produktnummern verändern.\n" +
+    "3. TAGS & PLATZHALTER: Alle {0}, %s, <x/>, <g> etc. 1:1 beibehalten.\n" +
+    "4. VOLLSTÄNDIGKEIT: Prüfen ob Source-Inhalt vollständig im Target vorhanden ist.\n" +
+    "5. BEDEUTUNG: Mistranslations und falsche Bedeutungen korrigieren.\n\n" +
+    "AKTIVE VERBESSERUNGEN:\n" +
+    "6. NATÜRLICHKEIT: Wörtliche, unnatürliche Konstruktionen in idiomatische Zielsprache überführen.\n" +
+    "7. STIL & REGISTER: Klar, korrekt und neutral — weder betont fachsprachlich wie in\n" +
+    "   technischer Dokumentation noch werblich-emotional wie im Marketing. Sauberes,\n" +
+    "   allgemein verständliches Standarddeutsch/-Englisch/etc.\n" +
+    "8. FLÜSSIGKEIT: Sätze die holprig klingen glätten — auch wenn die Bedeutung korrekt ist.\n" +
+    "9. KOHÄRENZ: Gleiche Begriffe und Strukturen konsistent halten.\n\n" +
+    "NICHT VERÄNDERN:\n" +
+    "- Zahlen, Maßeinheiten, Produktcodes\n" +
+    "- Tags und Platzhalter\n\n" +
+    "WICHTIG: Sei aktiv und verbessere. Wenn du eine bessere Formulierung siehst: verwende sie.\n" +
+    "Bleib dabei neutral — ohne die fachsprachliche Strenge der technischen Dokumentation\n" +
+    "oder die werbliche Tonalität des Marketings."
 };
 
 /**
@@ -398,8 +423,9 @@ function isGeminiPostEditEnabled_() {
 
 /**
  * Resolves a profile key (e.g. "MARKETING") to its PE prompt.
- * Unknown/GENERAL profiles fall back to TECHNICAL — the stricter, less
- * stylistically invasive prompt is the safer default.
+ * Any profile key without its own entry in GEMINI_PE_PROMPTS_ falls back to
+ * TECHNICAL — the stricter, less stylistically invasive prompt is the
+ * safer default.
  */
 function getPePromptForProfile_(profileKey) {
   var key = String(profileKey || "").toUpperCase();
