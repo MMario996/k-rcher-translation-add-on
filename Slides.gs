@@ -7,6 +7,7 @@
  *  v2.4 — Recursive group traversal (grouped shapes/tables now
  *         translated without needing to ungroup first)
  *  v2.5 — "Speaker notes only" translation handler added
+ *  v2.6 — "Selected slides" (filmstrip) translation handler added
  * ============================================================
  */
 
@@ -68,6 +69,57 @@ function getSlidesSelection_() {
   if (sel && sel.getSelectionType() === SlidesApp.SelectionType.PAGE_ELEMENT) {
     collectElementsRecursive_(sel.getPageElementRange().getPageElements(), 0, groups, false);
   }
+  return groups;
+}
+
+
+// 🎯 Selection (whole slides, marked in the left-hand filmstrip) ====
+//
+//  Distinct from getSlidesSelection_() above: clicking one or more slide
+//  thumbnails in the filmstrip/grid view (not a text box on the canvas)
+//  produces SelectionType.PAGE, and getPageRange().getPages() returns the
+//  marked slides themselves. Every shape, table cell, and speaker note on
+//  each marked slide is collected — everything else in the deck is left
+//  untouched.
+
+function getSelectedSlidesShapes_() {
+  var pres   = SlidesApp.getActivePresentation();
+  var sel    = pres.getSelection();
+  var groups = [];
+
+  if (!sel || sel.getSelectionType() !== SlidesApp.SelectionType.PAGE) return groups;
+
+  var pageRange = sel.getPageRange();
+  if (!pageRange) return groups;
+
+  // getPageRange().getPages() returns generic Page objects with no direct
+  // "which position in the deck" accessor — map objectId -> 1-based slide
+  // number up front so status messages/logs can reference the real slide.
+  var slideNumById = {};
+  pres.getSlides().forEach(function(slide, idx) {
+    slideNumById[slide.getObjectId()] = idx + 1;
+  });
+
+  pageRange.getPages().forEach(function(page) {
+    var slide;
+    try {
+      slide = page.asSlide();
+    } catch (e) {
+      console.warn("getSelectedSlidesShapes_: selected page is not a slide — skipped: " + e.message);
+      return;
+    }
+
+    var slideNum = slideNumById[slide.getObjectId()] || 0;
+
+    collectElementsRecursive_(slide.getPageElements(), slideNum, groups, false);
+
+    try {
+      collectElementsRecursive_(slide.getNotesPage().getPageElements(), slideNum, groups, true);
+    } catch (e) {
+      console.warn("Notes slide " + slideNum + ": " + e.message);
+    }
+  });
+
   return groups;
 }
 
@@ -303,6 +355,45 @@ function handleSlidesSelectionTranslate(e) {
     });
 
     return notify_("✅ " + count + " paragraph(s) translated to " + langLabel_(s.targetLang));
+  } catch (err) {
+    console.error(err.stack || err.message);
+    return notify_("❌ " + err.message);
+  }
+}
+
+function handleSlidesSelectedSlidesTranslate(e) {
+  try {
+    checkWriteAccess_();
+    resetTranslationStats_();
+    var s      = extractSettings_(e);
+    var groups = getSelectedSlidesShapes_();
+    if (!groups.length) {
+      return notify_("⚠️ Please select one or more slides in the filmstrip on the left first.");
+    }
+
+    var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang, s.profile);
+
+    var paraCount  = groups.reduce(function(n, g) { return n + g.entries.length; }, 0);
+    var slideNums  = [];
+    groups.forEach(function(g) {
+      if (slideNums.indexOf(g.slideNum) === -1) slideNums.push(g.slideNum);
+    });
+
+    logUsage_({
+      hostApp:    "SLIDES",
+      action:     "Selected Slides",
+      profile:    s.profile,
+      sourceLang: s.sourceLang,
+      targetLang: s.targetLang,
+      segments:   paraCount,
+      words:      words,
+      engine:     engineLabel_()
+    });
+
+    return notify_(
+      "✅ " + paraCount + " paragraph(s) on " + slideNums.length +
+      " selected slide(s) translated to " + langLabel_(s.targetLang) + "."
+    );
   } catch (err) {
     console.error(err.stack || err.message);
     return notify_("❌ " + err.message);

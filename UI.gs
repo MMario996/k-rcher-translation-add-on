@@ -202,7 +202,8 @@ function buildActionSection_(hostApp) {
   } else if (hostApp === "SLIDES") {
     section.addWidget(
       CardService.newTextParagraph().setText(
-        "📌 <b>Select one or more text boxes</b> by clicking on it, then translate the selection or translate all slides at once below."
+        "📌 <b>Select one or more text boxes</b> on the canvas, or <b>select whole slides</b> " +
+        "in the filmstrip on the left, then translate below."
       )
     );
     section.addWidget(CardService.newDivider());
@@ -215,6 +216,19 @@ function buildActionSection_(hostApp) {
     section.addWidget(
       CardService.newDecoratedText()
         .setText("Translates the currently selected text boxes. Font, size, and colour are preserved.")
+        .setWrapText(true)
+    );
+    section.addWidget(CardService.newDivider());
+    section.addWidget(
+      CardService.newTextButton()
+        .setText("TRANSL. SELECTED SLIDES")
+        .setOnClickAction(CardService.newAction().setFunctionName("handleSlidesSelectedSlidesTranslate"))
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+    );
+    section.addWidget(
+      CardService.newDecoratedText()
+        .setText("Translates every text box, table cell, and speaker note on the slide(s) currently " +
+                 "marked in the filmstrip/grid view on the left. The rest of the deck is untouched.")
         .setWrapText(true)
     );
     section.addWidget(CardService.newDivider());
