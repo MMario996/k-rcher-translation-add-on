@@ -33,8 +33,16 @@ var CONFIG = {
   // user's own UserProperties — never centrally logged, no admin visibility
   // into who has or hasn't seen it.
   PROP_WHATS_NEW_SEEN: "WHATS_NEW_SEEN_VERSION",
-  WHATS_NEW_VERSION:   "1.1",
+  WHATS_NEW_VERSION:   "1.2",
   WHATS_NEW_ITEMS: [
+    {
+      title: "✨ Even more accurate translations",
+      text:  "We've improved our translation quality — the AI engines now translate with noticeably better contextual accuracy than before."
+    },
+    {
+      title: "🎯 Translate only selected slides",
+      text:  "In Google Slides, select one or more slides in the filmstrip on the left, then use the new \"Transl. Selected Slides\" button to translate just those — the rest of the deck stays untouched."
+    },
     {
       title: "🎙️ Translate speaker notes only",
       text:  "A new button in Slides lets you translate just the speaker notes across all slides, without touching the slide content."
