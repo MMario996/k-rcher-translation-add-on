@@ -15,6 +15,11 @@
  */
 
 // 🤖 Gemini fallback settings ========================
+//
+//  MODELL-HINWEIS: Der Gateway (34-111-99-134.nip.io/gemini) unterstützt
+//  nicht alle offiziellen Gemini-Modellnamen — ältere/andere Modelle
+//  liefern 404 "not found". Laut autofix-hub-Projekt (gleicher Gateway,
+//  gleicher Key) ist aktuell nur "gemini-3.6-flash" freigeschaltet.
 var GEMINI_BASE_URL       = "https://34-111-99-134.nip.io/gemini";
-var GEMINI_FALLBACK_MODEL = "gemini-2.5-flash";
+var GEMINI_FALLBACK_MODEL = "gemini-3.6-flash";
 var GEMINI_BATCH_SIZE     = 25;   // Texte pro Gemini-Request

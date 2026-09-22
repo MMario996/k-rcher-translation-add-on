@@ -319,7 +319,9 @@ function geminiCallWithRetry_(url, key, payload, expectedCount) {
 //  return the translations unchanged. This step must never block a
 //  translation or make it slower than a single fetchAll() call.
 
-var GEMINI_PE_MODEL      = "gemini-2.5-flash";
+// Same model-availability caveat as GEMINI_FALLBACK_MODEL (see "Config
+// gemini ergaenzung.gs") — the gateway currently only serves gemini-3.6-flash.
+var GEMINI_PE_MODEL      = "gemini-3.6-flash";
 var GEMINI_PE_BATCH_SIZE = 25;
 
 // Keyed by the add-on's profile keys (CONFIG.MT_PROFILE_DEFAULTS: MARKETING /
