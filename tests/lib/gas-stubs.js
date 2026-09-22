@@ -69,4 +69,49 @@ function makeFakeText(text, boldRanges) {
   };
 }
 
-module.exports = { makeDriveAppStub, makeFakeText };
+/**
+ * Minimal stand-in for PropertiesService, backed by a plain object so tests
+ * can seed script properties (e.g. GEMINI_API_KEY, GEMINI_PE_ENABLED) and
+ * assert on ones the code under test writes.
+ */
+function makePropertiesServiceStub(initialScriptProps) {
+  var scriptProps = Object.assign({}, initialScriptProps || {});
+
+  var store = {
+    getProperty: function(key) {
+      return Object.prototype.hasOwnProperty.call(scriptProps, key) ? scriptProps[key] : null;
+    },
+    setProperty: function(key, value) { scriptProps[key] = String(value); },
+    deleteProperty: function(key) { delete scriptProps[key]; },
+    getProperties: function() { return Object.assign({}, scriptProps); }
+  };
+
+  return {
+    getScriptProperties: function() { return store; },
+    getUserProperties: function() { return store; },
+    _scriptProps: scriptProps
+  };
+}
+
+/**
+ * Minimal stand-in for UrlFetchApp.fetchAll(). `handler(request, index)`
+ * receives each request object and must return { code, body }; the stub
+ * wraps that into the { getResponseCode(), getContentText() } shape the
+ * Apps Script HTTPResponse object exposes.
+ */
+function makeUrlFetchAppStub(handler) {
+  function wrap(result) {
+    return {
+      getResponseCode: function() { return result.code; },
+      getContentText:  function() { return result.body; }
+    };
+  }
+  return {
+    fetchAll: function(requests) {
+      return requests.map(function(req, i) { return wrap(handler(req, i)); });
+    },
+    fetch: function(req) { return wrap(handler(req, 0)); }
+  };
+}
+
+module.exports = { makeDriveAppStub, makeFakeText, makePropertiesServiceStub, makeUrlFetchAppStub };

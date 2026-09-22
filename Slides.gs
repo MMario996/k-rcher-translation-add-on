@@ -236,7 +236,7 @@ function applySlideStyle_(range, run) {
 
 // 🔁 Core translate ============================
 
-function translateGroups_(groups, mtUid, sourceLang, targetLang) {
+function translateGroups_(groups, mtUid, sourceLang, targetLang, profileKey) {
   if (!groups.length) return 0;
 
   var totalParas = groups.reduce(function(n, g) { return n + g.entries.length; }, 0);
@@ -252,7 +252,7 @@ function translateGroups_(groups, mtUid, sourceLang, targetLang) {
 
   var totalWords = countWords_(allTexts);
 
-  var allTranslations = batchTranslate_(mtUid, allTexts, sourceLang, targetLang);
+  var allTranslations = batchTranslate_(mtUid, allTexts, sourceLang, targetLang, profileKey);
 
   // Apply — REVERSE order so indices stay valid
   groups.forEach(function(group) {
@@ -288,7 +288,7 @@ function handleSlidesSelectionTranslate(e) {
     var groups = getSlidesSelection_();
     if (!groups.length) return notify_("⚠️ Please click on a text box to select it first.");
 
-    var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang);
+    var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang, s.profile);
 
     var count = groups.reduce(function(n, g) { return n + g.entries.length; }, 0);
     logUsage_({
@@ -299,7 +299,7 @@ function handleSlidesSelectionTranslate(e) {
       targetLang: s.targetLang,
       segments:   count,
       words:      words,
-      engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
+      engine:     engineLabel_()
     });
 
     return notify_("✅ " + count + " paragraph(s) translated to " + langLabel_(s.targetLang));
@@ -319,7 +319,7 @@ function handleSlidesFullTranslate(e) {
     var groups = getAllPresentationShapes_();
     if (!groups.length) return notify_("No text found in presentation.");
 
-    var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang);
+    var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang, s.profile);
 
     var slideCount = SlidesApp.getActivePresentation().getSlides().length;
     var paraCount  = groups.reduce(function(n, g) { return n + g.entries.length; }, 0);
@@ -339,7 +339,7 @@ function handleSlidesFullTranslate(e) {
       targetLang: s.targetLang,
       segments:   paraCount,
       words:      words,
-      engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
+      engine:     engineLabel_()
     });
 
     return notify_(msg);
@@ -357,7 +357,7 @@ function handleSlidesNotesOnlyTranslate(e) {
     var groups = getAllNotesOnly_();
     if (!groups.length) return notify_("No speaker notes found in presentation.");
 
-    var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang);
+    var words = translateGroups_(groups, s.mtUid, s.sourceLang, s.targetLang, s.profile);
 
     var slideCount = SlidesApp.getActivePresentation().getSlides().length;
     var paraCount  = groups.reduce(function(n, g) { return n + g.entries.length; }, 0);
@@ -370,7 +370,7 @@ function handleSlidesNotesOnlyTranslate(e) {
       targetLang: s.targetLang,
       segments:   paraCount,
       words:      words,
-      engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
+      engine:     engineLabel_()
     });
 
     return notify_(

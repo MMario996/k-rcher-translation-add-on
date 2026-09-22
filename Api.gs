@@ -12,10 +12,11 @@
 //  read TRANSLATION_STATS_.usedGeminiFallback afterwards for the
 //  admin usage log (see logUsage_() in Helpers.gs).
 
-var TRANSLATION_STATS_ = { usedGeminiFallback: false };
+var TRANSLATION_STATS_ = { usedGeminiFallback: false, usedGeminiPostEdit: false };
 
 function resetTranslationStats_() {
   TRANSLATION_STATS_.usedGeminiFallback = false;
+  TRANSLATION_STATS_.usedGeminiPostEdit = false;
 }
 
 
@@ -107,7 +108,7 @@ function apiListLanguageAiProfiles_() {
   });
 }
 
-function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang) {
+function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang, profileKey) {
   if (!profileUid)             throw new Error("No translation profile selected.");
   if (!targetLang)             throw new Error("No target language selected.");
   if (!texts || !texts.length) throw new Error("No text to translate.");
@@ -161,7 +162,12 @@ function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang) {
   }
 
   // 🔁 3) Shared post-processing (protected abbreviations)
-  return postProcessTranslations_(texts, rawTranslations);
+  var finalized = postProcessTranslations_(texts, rawTranslations);
+
+  // ✨ 4) Optional Gemini post-edit pass (profile-specific PE prompt) —
+  //       fails open, so it can never make a translation run worse or slower
+  //       than before this step existed.
+  return geminiPostEditTexts_(texts, finalized, sourceLang, targetLang, profileKey);
 }
 
 
@@ -293,6 +299,222 @@ function geminiCallWithRetry_(url, key, payload, expectedCount) {
 
     throw new Error("Gemini fallback error (" + code + "): " + body.substring(0, 300));
   }
+}
+
+
+// ============================================================
+//  Gemini Post-Editing (PE) — profile-specific quality review
+// ============================================================
+//
+//  After a translation is produced (by Phrase or by the Gemini fallback
+//  above), an optional second Gemini pass reviews it against a
+//  profile-specific instruction set — the same Post-Editing prompts used
+//  in the AutoFix Hub project — and returns an improved version where one
+//  is warranted. Segments are batched and sent in one parallel
+//  UrlFetchApp.fetchAll() call, so the whole pass costs a single extra
+//  round-trip, not one request per batch.
+//
+//  Fails open everywhere: the toggle being off, no Gemini key configured,
+//  a network error, a 4xx/5xx response, or an unparsable reply all just
+//  return the translations unchanged. This step must never block a
+//  translation or make it slower than a single fetchAll() call.
+
+var GEMINI_PE_MODEL      = "gemini-2.5-flash";
+var GEMINI_PE_BATCH_SIZE = 25;
+
+// Keyed by the add-on's profile keys (CONFIG.MT_PROFILE_DEFAULTS: MARKETING /
+// TECHNICAL / GENERAL). GENERAL has no dedicated tone, so it reuses the
+// TECHNICAL prompt (precise corrections, no stylistic risk) — see
+// getPePromptForProfile_() below.
+var GEMINI_PE_PROMPTS_ = {
+  TECHNICAL:
+    "=== POST-EDITIERUNG (PE) — KÄRCHER TECHNISCHE DOKUMENTATION ===\n\n" +
+    "AUFTRAG: Du bist ein professioneller Übersetzer/Post-Editor bei Kärcher.\n" +
+    "Du erhältst maschinell übersetzte Segmente aus technischen Dokumenten\n" +
+    "(Servicehandbücher, Bedienungsanleitungen, Datenblätter) und verbesserst diese\n" +
+    "aktiv auf Publikationsqualität.\n\n" +
+    "PFLICHT-KORREKTUREN (immer prüfen und ggf. korrigieren):\n" +
+    "1. PRODUKTNAMEN: \"Kärcher\" immer mit Umlaut. Produktnamen wie \"K 2\", \"HD 6/13\" strukturell unverändert.\n" +
+    "2. ZAHLEN & EINHEITEN: Niemals Zahlen, Maßeinheiten (bar, °C, l/h, kW), Produktnummern verändern.\n" +
+    "3. TAGS & PLATZHALTER: Alle {0}, %s, <x/>, <g> etc. 1:1 beibehalten.\n" +
+    "4. VOLLSTÄNDIGKEIT: Prüfen ob Source-Inhalt vollständig im Target vorhanden ist.\n" +
+    "5. BEDEUTUNG: Mistranslations und falsche Bedeutungen korrigieren.\n\n" +
+    "AKTIVE VERBESSERUNGEN:\n" +
+    "6. NATÜRLICHKEIT: Wörtliche, unnatürliche Konstruktionen in idiomatische Zielsprache überführen.\n" +
+    "7. STIL & REGISTER: Technisch-präzise, sachlich, direkt. Kein Marketing-Ton.\n" +
+    "8. FLÜSSIGKEIT: Sätze die holprig klingen glätten — auch wenn die Bedeutung korrekt ist.\n" +
+    "9. KOHÄRENZ: Gleiche Begriffe und Strukturen konsistent halten.\n" +
+    "10. FACHSPRACHE: Technische Terme in der Zielsprache korrekt und fachgerecht formulieren.\n\n" +
+    "NICHT VERÄNDERN:\n" +
+    "- Zahlen, Maßeinheiten, Produktcodes\n" +
+    "- Tags und Platzhalter\n" +
+    "- Warnhinweis-Schlüsselwörter (WARNING, ATTENTION, DANGER, NOTICE)\n\n" +
+    "WICHTIG: Sei aktiv und verbessere. Wenn du eine bessere Formulierung siehst: verwende sie.",
+
+  MARKETING:
+    "=== POST-EDITIERUNG (PE) — KÄRCHER MARKETING ===\n\n" +
+    "AUFTRAG: Du bist ein professioneller Übersetzer/Post-Editor bei Kärcher.\n" +
+    "Du erhältst maschinell übersetzte Segmente aus Marketing-Materialien\n" +
+    "(Kampagnen, Produktbeschreibungen, Website-Texte, Social Media) und verbesserst\n" +
+    "diese aktiv auf Publikationsqualität.\n\n" +
+    "PFLICHT-KORREKTUREN (immer prüfen und ggf. korrigieren):\n" +
+    "1. PRODUKTNAMEN: \"Kärcher\" immer mit Umlaut. Produktnamen strukturell unverändert.\n" +
+    "2. ZAHLEN & EINHEITEN: Maßeinheiten und Produktnummern niemals verändern.\n" +
+    "3. TAGS & PLATZHALTER: Alle {0}, %s, <x/>, <g> etc. 1:1 beibehalten.\n" +
+    "4. VOLLSTÄNDIGKEIT: Prüfen ob Source-Inhalt vollständig im Target vorhanden ist.\n" +
+    "5. BEDEUTUNG: Mistranslations und falsche Bedeutungen korrigieren.\n\n" +
+    "AKTIVE VERBESSERUNGEN:\n" +
+    "6. TONALITÄT: Kärcher Marketing-Tonalität: kraftvoll, inspirierend, kundennah.\n" +
+    "   Aktive Sprache bevorzugen. Direkte Ansprache wo passend.\n" +
+    "7. NATÜRLICHKEIT: Idiomatische Zielsprache — nicht wörtlich übersetzen.\n" +
+    "   Texte sollen sich anfühlen als wären sie original in der Zielsprache verfasst.\n" +
+    "8. WERBEWIRKUNG: Emotionale Stärke und Call-to-Action beibehalten.\n" +
+    "   Slogans, Headlines und Claims besonders sorgfältig behandeln.\n" +
+    "9. LOKALANPASSUNG: Kulturell passende Formulierungen für den Zielmarkt.\n" +
+    "   Was im Deutschen funktioniert, muss nicht 1:1 in jede Sprache übertragbar sein.\n" +
+    "10. KONSISTENZ: Gleiche Kernbotschaften einheitlich kommunizieren.\n\n" +
+    "NICHT VERÄNDERN:\n" +
+    "- Produktcodes und technische Spezifikationen\n" +
+    "- Tags und Platzhalter\n" +
+    "- Eingetragene Markennamen und Slogans (nur wenn explizit lokalisiert)\n" +
+    "- Kampagnen-Hashtags und Social-Media-Handles\n\n" +
+    "WICHTIG: Marketing-Texte brauchen Energie und Überzeugungskraft.\n" +
+    "Eine korrekte aber flache Übersetzung ist nicht ausreichend — sei mutig und\n" +
+    "wähle die Formulierung die in der Zielsprache wirklich überzeugt."
+};
+
+/**
+ * Reads the GEMINI_PE_ENABLED toggle from ScriptProperties.
+ * Enabled by default (only an explicit "false" turns it off) so the
+ * feature works automatically once GEMINI_API_KEY is set — see
+ * ADMIN_enableGeminiPostEdit() / ADMIN_disableGeminiPostEdit() in Admin.gs.
+ */
+function isGeminiPostEditEnabled_() {
+  var v = PropertiesService.getScriptProperties().getProperty("GEMINI_PE_ENABLED");
+  return v !== "false";
+}
+
+/**
+ * Resolves a profile key (e.g. "MARKETING") to its PE prompt.
+ * Unknown/GENERAL profiles fall back to TECHNICAL — the stricter, less
+ * stylistically invasive prompt is the safer default.
+ */
+function getPePromptForProfile_(profileKey) {
+  var key = String(profileKey || "").toUpperCase();
+  return GEMINI_PE_PROMPTS_[key] || GEMINI_PE_PROMPTS_.TECHNICAL;
+}
+
+/**
+ * Sends `translations` (with their `sourceTexts`) to Gemini for a
+ * profile-specific post-edit pass and returns an array of the same
+ * length/order with any improved segments swapped in.
+ *
+ * Never throws — any failure mode (disabled, no key, network error,
+ * bad response) returns `translations` unchanged.
+ */
+function geminiPostEditTexts_(sourceTexts, translations, sourceLang, targetLang, profileKey) {
+  if (!translations || !translations.length) return translations;
+  if (!isGeminiPostEditEnabled_()) return translations;
+
+  var key;
+  try {
+    key = getGeminiKey_();
+  } catch (e) {
+    return translations; // no Gemini key configured — skip silently
+  }
+
+  var srcLabel = (sourceLang && sourceLang !== "auto")
+    ? langLabel_(sourceLang)
+    : "the source language (auto-detect)";
+  var tgtLabel     = langLabel_(targetLang);
+  var instructions = getPePromptForProfile_(profileKey);
+  var url           = GEMINI_BASE_URL + "/v1beta/models/" + GEMINI_PE_MODEL + ":generateContent";
+
+  var batches = [];
+  for (var i = 0; i < translations.length; i += GEMINI_PE_BATCH_SIZE) {
+    var srcSlice = sourceTexts.slice(i, i + GEMINI_PE_BATCH_SIZE);
+    var tgtSlice = translations.slice(i, i + GEMINI_PE_BATCH_SIZE);
+
+    var items = tgtSlice.map(function(t, idx) {
+      return {
+        id:     idx,
+        source: String(srcSlice[idx] == null ? "" : srcSlice[idx]),
+        target: String(t == null ? "" : t)
+      };
+    });
+
+    var prompt =
+      instructions + "\n\n" +
+      "=== SPRACHEN ===\n" +
+      "Quellsprache: " + srcLabel + " | Zielsprache: " + tgtLabel + "\n\n" +
+      "=== SEGMENTE ===\n" +
+      JSON.stringify(items) + "\n\n" +
+      "=== AUSGABE ===\n" +
+      "Liefere für JEDES der " + items.length + " Segmente genau einen Eintrag.\n" +
+      "Nur valides JSON, kein Markdown, in dieser Form:\n" +
+      "{ \"results\": [ { \"id\": <number>, \"corrected\": \"<text>\", \"changed\": true/false } ] }\n" +
+      "- bei changed=false: \"corrected\" identisch mit \"target\" lassen";
+
+    batches.push({
+      start: i,
+      count: items.length,
+      request: {
+        url: url, method: "post", contentType: "application/json",
+        muteHttpExceptions: true,
+        headers: { "x-api-key": key, "Accept": "application/json" },
+        payload: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature:      0.3,
+            responseMimeType: "application/json",
+            maxOutputTokens:  8192
+          }
+        })
+      }
+    });
+  }
+
+  if (!batches.length) return translations;
+
+  var responses;
+  try {
+    responses = UrlFetchApp.fetchAll(batches.map(function(b) { return b.request; }));
+  } catch (e) {
+    console.warn("geminiPostEditTexts_: fetchAll failed — skipping post-edit: " + e.message);
+    return translations;
+  }
+
+  var out        = translations.slice();
+  var appliedAny = false;
+
+  for (var b = 0; b < batches.length; b++) {
+    var res  = responses[b];
+    var code = res.getResponseCode();
+
+    if (code >= 400) {
+      console.warn("geminiPostEditTexts_: batch " + b + " returned " + code + " — keeping originals for this batch.");
+      continue;
+    }
+
+    try {
+      var json    = JSON.parse(res.getContentText());
+      var rawText = json.candidates[0].content.parts[0].text;
+      rawText     = rawText.replace(/^```(json)?\s*/gi, "").replace(/```\s*$/gi, "").trim();
+      var results = JSON.parse(rawText).results || [];
+
+      results.forEach(function(r) {
+        if (!r || typeof r.id !== "number" || r.id < 0 || r.id >= batches[b].count) return;
+        if (!r.changed || typeof r.corrected !== "string" || !r.corrected.trim()) return;
+        out[batches[b].start + r.id] = r.corrected;
+        appliedAny = true;
+      });
+    } catch (parseErr) {
+      console.warn("geminiPostEditTexts_: batch " + b + " unreadable — keeping originals: " + parseErr.message);
+    }
+  }
+
+  if (appliedAny) TRANSLATION_STATS_.usedGeminiPostEdit = true;
+  return out;
 }
 
 

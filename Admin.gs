@@ -256,6 +256,32 @@ function ADMIN_addUserColumnToLog() {
 }
 
 
+// 🤖 Gemini Post-Editing (PE) toggle ============
+//
+//  A second Gemini pass that reviews/polishes every translation using a
+//  profile-specific prompt (GEMINI_PE_PROMPTS_ in Api.gs), mirroring the
+//  Post-Editing step from the AutoFix Hub project. Enabled by default
+//  whenever GEMINI_API_KEY is configured, and fails open (see
+//  geminiPostEditTexts_ in Api.gs) so it never blocks a translation —
+//  disable it here if it ever adds noticeable latency, or to roll it back.
+
+function ADMIN_enableGeminiPostEdit() {
+  PropertiesService.getScriptProperties().setProperty("GEMINI_PE_ENABLED", "true");
+  console.log("✅ Gemini Post-Editing aktiviert.");
+}
+
+function ADMIN_disableGeminiPostEdit() {
+  PropertiesService.getScriptProperties().setProperty("GEMINI_PE_ENABLED", "false");
+  console.log("✅ Gemini Post-Editing deaktiviert.");
+}
+
+function ADMIN_isGeminiPostEditEnabled() {
+  var enabled = isGeminiPostEditEnabled_();
+  console.log(enabled ? "Gemini Post-Editing ist AKTIV." : "Gemini Post-Editing ist DEAKTIVIERT.");
+  return enabled;
+}
+
+
 // 🔔 "What's New" popup administration =========
 
 /**

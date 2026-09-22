@@ -33,7 +33,7 @@ function applySheetsTranslation_(selection, translations) {
   selection.range.setValues(vals);
 }
 
-function translateEntireSpreadsheet_(mtUid, sourceLang, targetLang) {
+function translateEntireSpreadsheet_(mtUid, sourceLang, targetLang, profileKey) {
   var ss     = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = ss.getSheets();
   var total  = 0;
@@ -71,7 +71,7 @@ function translateEntireSpreadsheet_(mtUid, sourceLang, targetLang) {
 
     var texts        = sd.cells.map(function(cell) { return cell.text; });
     totalWords       += countWords_(texts);
-    var translations = batchTranslate_(mtUid, texts, sourceLang, targetLang);
+    var translations = batchTranslate_(mtUid, texts, sourceLang, targetLang, profileKey);
 
     sd.cells.forEach(function(cell, idx) {
       sd.vals[cell.row][cell.col] = translations[idx] || cell.text;
@@ -96,7 +96,7 @@ function handleSheetsSelectionTranslate(e) {
     checkSizeLimit_(sel.cells.length, "cells");
 
     var texts        = sel.cells.map(function(c) { return c.text; });
-    var translations = batchTranslate_(s.mtUid, texts, s.sourceLang, s.targetLang);
+    var translations = batchTranslate_(s.mtUid, texts, s.sourceLang, s.targetLang, s.profile);
     applySheetsTranslation_(sel, translations);
 
     logUsage_({
@@ -107,7 +107,7 @@ function handleSheetsSelectionTranslate(e) {
       targetLang: s.targetLang,
       segments:   sel.cells.length,
       words:      countWords_(texts),
-      engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
+      engine:     engineLabel_()
     });
 
     return notify_("✅ " + sel.cells.length + " cells translated to " + langLabel_(s.targetLang));
@@ -124,7 +124,7 @@ function handleSheetsFullTranslate(e) {
     var s      = extractSettings_(e);
     var backup = createBackupCopy_("SHEETS");
 
-    var result = translateEntireSpreadsheet_(s.mtUid, s.sourceLang, s.targetLang);
+    var result = translateEntireSpreadsheet_(s.mtUid, s.sourceLang, s.targetLang, s.profile);
 
     var msg = "✅ " + result.count + " cells translated to " + langLabel_(s.targetLang) +
               (backup ? " (Backup: " + backup.name + ")" : "");
@@ -137,7 +137,7 @@ function handleSheetsFullTranslate(e) {
       targetLang: s.targetLang,
       segments:   result.count,
       words:      result.words,
-      engine:     TRANSLATION_STATS_.usedGeminiFallback ? "Gemini (Fallback)" : "Phrase"
+      engine:     engineLabel_()
     });
 
     return notify_(msg);
