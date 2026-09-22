@@ -36,12 +36,12 @@ var CONFIG = {
   WHATS_NEW_VERSION:   "1.2",
   WHATS_NEW_ITEMS: [
     {
-      title: "✨ Even more accurate translations",
-      text:  "We've improved our translation quality — the AI engines now translate with noticeably better contextual accuracy than before."
+      title: "✨ Better translation quality",
+      text:  "Translations now go through an extra AI review step that catches mistranslations and cleans up awkward phrasing before they reach your document."
     },
     {
-      title: "🎯 Translate only selected slides",
-      text:  "In Google Slides, select one or more slides in the filmstrip on the left, then use the new \"Transl. Selected Slides\" button to translate just those — the rest of the deck stays untouched."
+      title: "🎯 Translate selected slides",
+      text:  "In Slides, select one or more slides in the panel on the left, then hit \"Transl. Selected Slides\" to translate just those — the rest of the deck is left alone."
     },
     {
       title: "🎙️ Translate speaker notes only",
