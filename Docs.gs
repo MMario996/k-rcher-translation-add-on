@@ -394,6 +394,7 @@ function handleDocsSelectionTranslate(e) {
 
 function handleDocsFullTranslate(e) {
   EXEC_START_ = Date.now();
+  requireDriveScope_();
   try {
     resetTranslationStats_();
     checkWriteAccess_();

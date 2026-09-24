@@ -403,6 +403,7 @@ function handleSlidesSelectedSlidesTranslate(e) {
 }
 
 function handleSlidesFullTranslate(e) {
+  requireDriveScope_();
   try {
     resetTranslationStats_();
     checkWriteAccess_();

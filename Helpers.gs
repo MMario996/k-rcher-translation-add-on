@@ -124,6 +124,20 @@ function checkWriteAccess_() {
 }
 
 
+// 🔑 Drive scope check (needed by createBackupCopy_)
+//
+//  Must be called OUTSIDE any try/catch: if the user has not granted the
+//  Drive scope (e.g. unticked it in the granular consent screen),
+//  requireScopes ends the execution and shows the consent prompt. A catch
+//  block would swallow that and the backup would silently be skipped.
+
+function requireDriveScope_() {
+  ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, [
+    "https://www.googleapis.com/auth/drive"
+  ]);
+}
+
+
 // 💾 Backup copy (safety net before full-document translations)
 //
 //  Creates a timestamped copy of the currently open file BEFORE a
