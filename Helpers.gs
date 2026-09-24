@@ -163,7 +163,17 @@ function createBackupCopy_(hostApp) {
 //  are always swallowed so logging can never break a translation.
 //
 //  Columns: Timestamp, User, App, Action, Profile, Source Lang, Target Lang,
-//  Segments, Words, Engine.
+//  Segments, Words, Engine, Status, Error.
+//
+//  Failed runs are logged too (Status "ERROR" + the error message), see
+//  logFailure_(). Hard platform kills ("Exceeded maximum execution time")
+//  can't be caught by the script and therefore never reach the log.
+
+var LOG_HEADERS_ = [
+  "Timestamp", "User", "App", "Action", "Profile",
+  "Source Lang", "Target Lang", "Segments", "Words", "Engine",
+  "Status", "Error"
+];
 
 function getLogSheet_() {
   var id = PropertiesService.getScriptProperties().getProperty(CONFIG.PROP_LOG_SHEET_ID);
@@ -174,12 +184,15 @@ function getLogSheet_() {
     var sheet = ss.getSheetByName("Usage Log") || ss.insertSheet("Usage Log");
 
     if (sheet.getLastRow() === 0) {
-      sheet.appendRow([
-        "Timestamp", "User", "App", "Action", "Profile",
-        "Source Lang", "Target Lang", "Segments", "Words", "Engine"
-      ]);
-      sheet.getRange(1, 1, 1, 10).setFontWeight("bold");
+      sheet.appendRow(LOG_HEADERS_);
+      sheet.getRange(1, 1, 1, LOG_HEADERS_.length).setFontWeight("bold");
       sheet.setFrozenRows(1);
+    } else if (sheet.getLastColumn() < LOG_HEADERS_.length) {
+      // Existing log from before the Status/Error columns — add their headers once.
+      var from = sheet.getLastColumn() + 1;
+      sheet.getRange(1, from, 1, LOG_HEADERS_.length - from + 1)
+        .setValues([LOG_HEADERS_.slice(from - 1)])
+        .setFontWeight("bold");
     }
     return sheet;
   } catch (e) {
@@ -197,6 +210,7 @@ function getLogSheet_() {
  *   segments:   number of translated text segments/cells/paragraphs
  *   words:      total word count of the translated source text
  *   engine:     "Phrase" or "Gemini (Fallback)"
+ *   error:      error message if the run failed (Status becomes "ERROR")
  */
 function logUsage_(details) {
   try {
@@ -216,11 +230,30 @@ function logUsage_(details) {
       details.targetLang || "",
       details.segments   || 0,
       details.words      || 0,
-      details.engine     || "Phrase"
+      details.engine     || "Phrase",
+      details.error ? "ERROR" : "OK",
+      details.error      || ""
     ]);
   } catch (e) {
     console.warn("logUsage_: " + e.message);
   }
+}
+
+/**
+ * Logs a failed translation run. `settings` may be undefined when the run
+ * failed before the card settings were read.
+ */
+function logFailure_(hostApp, action, settings, err) {
+  var st = settings || {};
+  logUsage_({
+    hostApp:    hostApp,
+    action:     action,
+    profile:    st.profile,
+    sourceLang: st.sourceLang,
+    targetLang: st.targetLang,
+    engine:     engineLabel_(),
+    error:      String((err && err.message) || err || "Unknown error").substring(0, 500)
+  });
 }
 
 /**
@@ -260,11 +293,11 @@ function checkSizeLimit_(count, entityLabel) {
   }
 }
 
-function batchTranslate_(mtUid, texts, sourceLang, targetLang, profileKey) {
+function batchTranslate_(mtUid, texts, sourceLang, targetLang, profileKey, usePostEdit) {
   var all = [];
   for (var i = 0; i < texts.length; i += MAX_BATCH) {
     var batch  = texts.slice(i, i + MAX_BATCH);
-    var result = apiTranslateTexts_(mtUid, batch, sourceLang, targetLang, profileKey);
+    var result = apiTranslateTexts_(mtUid, batch, sourceLang, targetLang, profileKey, usePostEdit);
     result.forEach(function(t) { all.push(t); });
   }
   return all;

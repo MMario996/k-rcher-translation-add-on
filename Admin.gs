@@ -258,6 +258,7 @@ function ADMIN_addUserColumnToLog() {
 
 // 🤖 Gemini Post-Editing (PE) toggle ============
 //
+//  Google Slides only (Docs/Sheets skip it — see apiTranslateTexts_).
 //  A second Gemini pass that reviews/polishes every translation using a
 //  profile-specific prompt (GEMINI_PE_PROMPTS_ in Api.gs), mirroring the
 //  Post-Editing step from the AutoFix Hub project. Enabled by default

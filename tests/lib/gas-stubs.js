@@ -103,7 +103,8 @@ function makeUrlFetchAppStub(handler) {
   function wrap(result) {
     return {
       getResponseCode: function() { return result.code; },
-      getContentText:  function() { return result.body; }
+      getContentText:  function() { return result.body; },
+      getHeaders:      function() { return result.headers || {}; }
     };
   }
   return {
