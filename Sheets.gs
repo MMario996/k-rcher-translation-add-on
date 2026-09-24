@@ -113,6 +113,7 @@ function handleSheetsSelectionTranslate(e) {
     return notify_("✅ " + sel.cells.length + " cells translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("SHEETS", "Selection", s, err);
     return notify_("❌ " + err.message);
   }
 }
@@ -143,6 +144,7 @@ function handleSheetsFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("SHEETS", "Full Spreadsheet", s, err);
     return notify_("❌ " + err.message);
   }
 }

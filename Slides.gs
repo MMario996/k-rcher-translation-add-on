@@ -304,7 +304,8 @@ function translateGroups_(groups, mtUid, sourceLang, targetLang, profileKey) {
 
   var totalWords = countWords_(allTexts);
 
-  var allTranslations = batchTranslate_(mtUid, allTexts, sourceLang, targetLang, profileKey);
+  // Slides is the only host that gets the Gemini post-edit pass (last arg).
+  var allTranslations = batchTranslate_(mtUid, allTexts, sourceLang, targetLang, profileKey, true);
 
   // Apply — REVERSE order so indices stay valid
   groups.forEach(function(group) {
@@ -357,6 +358,7 @@ function handleSlidesSelectionTranslate(e) {
     return notify_("✅ " + count + " paragraph(s) translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("SLIDES", "Selected Shapes", s, err);
     return notify_("❌ " + err.message);
   }
 }
@@ -396,6 +398,7 @@ function handleSlidesSelectedSlidesTranslate(e) {
     );
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("SLIDES", "Selected Slides", s, err);
     return notify_("❌ " + err.message);
   }
 }
@@ -436,6 +439,7 @@ function handleSlidesFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("SLIDES", "All Slides + Notes", s, err);
     return notify_("❌ " + err.message);
   }
 }
@@ -470,6 +474,7 @@ function handleSlidesNotesOnlyTranslate(e) {
     );
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("SLIDES", "Speaker Notes Only", s, err);
     return notify_("❌ " + err.message);
   }
 }

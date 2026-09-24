@@ -387,6 +387,7 @@ function handleDocsSelectionTranslate(e) {
     return notify_("✅ " + result.count + " text block(s) translated to " + langLabel_(s.targetLang));
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("DOCS", "Selection", s, err);
     return notify_("❌ " + err.message);
   }
 }
@@ -418,6 +419,7 @@ function handleDocsFullTranslate(e) {
     return notify_(msg);
   } catch (err) {
     console.error(err.stack || err.message);
+    logFailure_("DOCS", "Full Document", s, err);
     return notify_("❌ " + err.message);
   }
 }

@@ -17,7 +17,16 @@ var TRANSLATION_STATS_ = { usedGeminiFallback: false, usedGeminiPostEdit: false 
 function resetTranslationStats_() {
   TRANSLATION_STATS_.usedGeminiFallback = false;
   TRANSLATION_STATS_.usedGeminiPostEdit = false;
+  RUN_START_MS_ = Date.now();
 }
+
+// Start time of the current handler run (reset by resetTranslationStats_()).
+// The optional Gemini post-edit pass is skipped once a run has used more
+// than GEMINI_PE_TIME_BUDGET_MS_ — add-on card actions are killed hard at
+// ~30 s ("Exceeded maximum execution time"), and a skipped polish is far
+// better than a lost translation.
+var RUN_START_MS_             = Date.now();
+var GEMINI_PE_TIME_BUDGET_MS_ = 12000;
 
 
 function getToken_() {
@@ -108,7 +117,12 @@ function apiListLanguageAiProfiles_() {
   });
 }
 
-function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang, profileKey) {
+/**
+ * @param {boolean} [usePostEdit] — run the optional Gemini post-edit pass.
+ *   Only Slides passes true; Docs and Sheets skip it (it made those runs
+ *   slow enough to hit the add-on execution time limit).
+ */
+function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang, profileKey, usePostEdit) {
   if (!profileUid)             throw new Error("No translation profile selected.");
   if (!targetLang)             throw new Error("No target language selected.");
   if (!texts || !texts.length) throw new Error("No text to translate.");
@@ -165,8 +179,8 @@ function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang, profileKe
   var finalized = postProcessTranslations_(texts, rawTranslations);
 
   // ✨ 4) Optional Gemini post-edit pass (profile-specific PE prompt) —
-  //       fails open, so it can never make a translation run worse or slower
-  //       than before this step existed.
+  //       Slides only, fails open, so it can never make a translation worse.
+  if (usePostEdit !== true) return finalized;
   return geminiPostEditTexts_(texts, finalized, sourceLang, targetLang, profileKey);
 }
 
@@ -443,6 +457,11 @@ function getPePromptForProfile_(profileKey) {
 function geminiPostEditTexts_(sourceTexts, translations, sourceLang, targetLang, profileKey) {
   if (!translations || !translations.length) return translations;
   if (!isGeminiPostEditEnabled_()) return translations;
+  if (Date.now() - RUN_START_MS_ > GEMINI_PE_TIME_BUDGET_MS_) {
+    console.warn("geminiPostEditTexts_: run already took " + (Date.now() - RUN_START_MS_) +
+                 " ms — skipping post-edit to avoid the add-on timeout.");
+    return translations;
+  }
 
   var key;
   try {
