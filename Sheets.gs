@@ -119,6 +119,7 @@ function handleSheetsSelectionTranslate(e) {
 }
 
 function handleSheetsFullTranslate(e) {
+  requireDriveScope_();
   try {
     resetTranslationStats_();
     checkWriteAccess_();
