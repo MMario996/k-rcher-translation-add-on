@@ -365,8 +365,8 @@ function applyDocAttrs_(txt, start, end, attrs) {
 function handleDocsSelectionTranslate(e) {
   EXEC_START_ = Date.now();
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s   = extractSettings_(e);
     var sel = DocumentApp.getActiveDocument().getSelection();
     if (!sel) return notify_("⚠️ Please select text first, or use Ctrl+A to select all.");
@@ -395,8 +395,8 @@ function handleDocsSelectionTranslate(e) {
 function handleDocsFullTranslate(e) {
   EXEC_START_ = Date.now();
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s      = extractSettings_(e);
     var backup = createBackupCopy_("DOCS");
 

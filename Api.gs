@@ -24,7 +24,7 @@ function resetTranslationStats_() {
 // The optional Gemini post-edit pass is skipped once a run has used more
 // than GEMINI_PE_TIME_BUDGET_MS_ — add-on card actions are killed hard at
 // ~30 s ("Exceeded maximum execution time"), and a skipped polish is far
-// better than a lost translation.
+// better than a lost translation. Applies to Docs, Sheets and Slides.
 var RUN_START_MS_             = Date.now();
 var GEMINI_PE_TIME_BUDGET_MS_ = 12000;
 
@@ -117,12 +117,7 @@ function apiListLanguageAiProfiles_() {
   });
 }
 
-/**
- * @param {boolean} [usePostEdit] — run the optional Gemini post-edit pass.
- *   Only Slides passes true; Docs and Sheets skip it (it made those runs
- *   slow enough to hit the add-on execution time limit).
- */
-function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang, profileKey, usePostEdit) {
+function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang, profileKey) {
   if (!profileUid)             throw new Error("No translation profile selected.");
   if (!targetLang)             throw new Error("No target language selected.");
   if (!texts || !texts.length) throw new Error("No text to translate.");
@@ -179,8 +174,8 @@ function apiTranslateTexts_(profileUid, texts, sourceLang, targetLang, profileKe
   var finalized = postProcessTranslations_(texts, rawTranslations);
 
   // ✨ 4) Optional Gemini post-edit pass (profile-specific PE prompt) —
-  //       Slides only, fails open, so it can never make a translation worse.
-  if (usePostEdit !== true) return finalized;
+  //       fails open and is skipped once the run's time budget is used up
+  //       (see GEMINI_PE_TIME_BUDGET_MS_), so it can't cause a timeout.
   return geminiPostEditTexts_(texts, finalized, sourceLang, targetLang, profileKey);
 }
 
@@ -336,7 +331,23 @@ function geminiCallWithRetry_(url, key, payload, expectedCount) {
 // Same model-availability caveat as GEMINI_FALLBACK_MODEL (see "Config
 // gemini ergaenzung.gs") — the gateway currently only serves gemini-3.6-flash.
 var GEMINI_PE_MODEL      = "gemini-3.6-flash";
-var GEMINI_PE_BATCH_SIZE = 25;
+// Small batches: all batches run in parallel via fetchAll(), so the pass
+// takes as long as the slowest batch — and small batches answer faster.
+var GEMINI_PE_BATCH_SIZE = 10;
+
+// The Gemini 3 Flash models "think" before answering by default, which adds
+// several seconds per request and brings nothing for a post-edit review.
+// Sent as generationConfig.thinkingConfig. If the gateway/model rejects the
+// field (400 mentioning "thinking"), GEMINI_PE_THINKING_UNSUPPORTED is set
+// in ScriptProperties and the field is left out from then on.
+var GEMINI_PE_THINKING_LEVEL = "minimal";
+
+function geminiPeGenerationConfig_() {
+  var cfg = { temperature: 0.3, responseMimeType: "application/json", maxOutputTokens: 8192 };
+  var unsupported = PropertiesService.getScriptProperties().getProperty("GEMINI_PE_THINKING_UNSUPPORTED");
+  if (unsupported !== "true") cfg.thinkingConfig = { thinkingLevel: GEMINI_PE_THINKING_LEVEL };
+  return cfg;
+}
 
 // Keyed by the add-on's profile keys (CONFIG.MT_PROFILE_DEFAULTS: MARKETING /
 // TECHNICAL / GENERAL). Any other/unset key falls back to TECHNICAL — see
@@ -476,6 +487,7 @@ function geminiPostEditTexts_(sourceTexts, translations, sourceLang, targetLang,
   var tgtLabel     = langLabel_(targetLang);
   var instructions = getPePromptForProfile_(profileKey);
   var url           = GEMINI_BASE_URL + "/v1beta/models/" + GEMINI_PE_MODEL + ":generateContent";
+  var genConfig     = geminiPeGenerationConfig_();
 
   var batches = [];
   for (var i = 0; i < translations.length; i += GEMINI_PE_BATCH_SIZE) {
@@ -511,11 +523,7 @@ function geminiPostEditTexts_(sourceTexts, translations, sourceLang, targetLang,
         headers: { "x-api-key": key, "Accept": "application/json" },
         payload: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature:      0.3,
-            responseMimeType: "application/json",
-            maxOutputTokens:  8192
-          }
+          generationConfig: genConfig
         })
       }
     });
@@ -539,6 +547,10 @@ function geminiPostEditTexts_(sourceTexts, translations, sourceLang, targetLang,
     var code = res.getResponseCode();
 
     if (code >= 400) {
+      if (code === 400 && genConfig.thinkingConfig && /thinking/i.test(res.getContentText())) {
+        PropertiesService.getScriptProperties().setProperty("GEMINI_PE_THINKING_UNSUPPORTED", "true");
+        console.warn("geminiPostEditTexts_: thinkingConfig rejected — will be omitted from now on.");
+      }
       console.warn("geminiPostEditTexts_: batch " + b + " returned " + code + " — keeping originals for this batch.");
       continue;
     }

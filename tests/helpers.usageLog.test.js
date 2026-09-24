@@ -47,6 +47,7 @@ test('a successful run is logged with Status OK and an empty Error cell', () => 
   assert.deepEqual(Array.from(sheet.rows[0]), Array.from(ctx.LOG_HEADERS_));
   assert.equal(sheet.rows[1][10], 'OK');
   assert.equal(sheet.rows[1][11], '');
+  assert.equal(typeof sheet.rows[1][12], 'number'); // Duration (s)
 });
 
 test('logFailure_ writes Status ERROR plus the message, even without settings', () => {
@@ -61,7 +62,7 @@ test('logFailure_ writes Status ERROR plus the message, even without settings', 
   assert.equal(row[11], 'Phrase API error (500): boom');
 });
 
-test('an existing 10-column log gets the Status/Error headers added once', () => {
+test('an existing 10-column log gets the Status/Error/Duration headers added once', () => {
   const oldHeaders = ['Timestamp', 'User', 'App', 'Action', 'Profile',
     'Source Lang', 'Target Lang', 'Segments', 'Words', 'Engine'];
   const sheet = makeSheet([oldHeaders]);

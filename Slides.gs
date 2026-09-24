@@ -304,8 +304,7 @@ function translateGroups_(groups, mtUid, sourceLang, targetLang, profileKey) {
 
   var totalWords = countWords_(allTexts);
 
-  // Slides is the only host that gets the Gemini post-edit pass (last arg).
-  var allTranslations = batchTranslate_(mtUid, allTexts, sourceLang, targetLang, profileKey, true);
+  var allTranslations = batchTranslate_(mtUid, allTexts, sourceLang, targetLang, profileKey);
 
   // Apply — REVERSE order so indices stay valid
   groups.forEach(function(group) {
@@ -335,8 +334,8 @@ function translateGroups_(groups, mtUid, sourceLang, targetLang, profileKey) {
 
 function handleSlidesSelectionTranslate(e) {
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s      = extractSettings_(e);
     var groups = getSlidesSelection_();
     if (!groups.length) return notify_("⚠️ Please click on a text box to select it first.");
@@ -365,8 +364,8 @@ function handleSlidesSelectionTranslate(e) {
 
 function handleSlidesSelectedSlidesTranslate(e) {
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s      = extractSettings_(e);
     var groups = getSelectedSlidesShapes_();
     if (!groups.length) {
@@ -405,8 +404,8 @@ function handleSlidesSelectedSlidesTranslate(e) {
 
 function handleSlidesFullTranslate(e) {
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s      = extractSettings_(e);
     var backup = createBackupCopy_("SLIDES");
 
@@ -446,8 +445,8 @@ function handleSlidesFullTranslate(e) {
 
 function handleSlidesNotesOnlyTranslate(e) {
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s      = extractSettings_(e);
     var groups = getAllNotesOnly_();
     if (!groups.length) return notify_("No speaker notes found in presentation.");

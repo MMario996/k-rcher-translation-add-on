@@ -12,10 +12,15 @@ version where warranted. The prompt used depends on the active translation
 profile (`Technical` / `Marketing` / `General`, see `getPePromptForProfile_`
 in `Api.gs`; `General` reuses the `Technical` prompt).
 
-**Google Slides only.** Docs and Sheets skip this pass — it made larger runs
-slow enough to hit the add-on's ~30 s execution limit. On Slides the pass is
-also skipped automatically once a run has already used 12 s
-(`GEMINI_PE_TIME_BUDGET_MS_` in `Api.gs`).
+Runs for Docs, Sheets and Slides. To stay clear of the add-on's ~30 s
+execution limit:
+
+- it is skipped automatically once a run has already used 12 s
+  (`GEMINI_PE_TIME_BUDGET_MS_` in `Api.gs`) — the Phrase translation is kept;
+- segments go out in small batches of 10, all in parallel;
+- Gemini's "thinking" is switched off (`thinkingConfig.thinkingLevel =
+  "minimal"`). If the gateway rejects that field, it is dropped
+  automatically. `ADMIN_testGeminiPostEditSpeed()` measures the difference.
 
 This step is enabled by default whenever `GEMINI_API_KEY` is configured, and
 is designed to never slow a translation down by more than one extra network
@@ -34,7 +39,8 @@ ADMIN_isGeminiPostEditEnabled() // check current state
 ## Usage log: errors
 
 The admin usage log (see `ADMIN_createUsageLogSheet()` in `Admin.gs`) has two
-extra columns, `Status` (`OK` / `ERROR`) and `Error` (the error message).
-Existing log sheets get the two headers added automatically on the next run.
+extra columns, `Status` (`OK` / `ERROR`) and `Error` (the error message),
+plus `Duration (s)` for the whole run. Existing log sheets get the missing
+headers added automatically on the next run.
 Hard platform kills ("Exceeded maximum execution time") can't be caught by
 the script and therefore don't show up in the log.
