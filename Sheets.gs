@@ -87,8 +87,8 @@ function translateEntireSpreadsheet_(mtUid, sourceLang, targetLang, profileKey) 
 
 function handleSheetsSelectionTranslate(e) {
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s   = extractSettings_(e);
     var sel = getSheetsSelection_();
     if (!sel.cells.length) return notify_("⚠️ Please select cells with text first, or use Ctrl+A to select all.");
@@ -120,8 +120,8 @@ function handleSheetsSelectionTranslate(e) {
 
 function handleSheetsFullTranslate(e) {
   try {
-    checkWriteAccess_();
     resetTranslationStats_();
+    checkWriteAccess_();
     var s      = extractSettings_(e);
     var backup = createBackupCopy_("SHEETS");
 

@@ -258,7 +258,8 @@ function ADMIN_addUserColumnToLog() {
 
 // 🤖 Gemini Post-Editing (PE) toggle ============
 //
-//  Google Slides only (Docs/Sheets skip it — see apiTranslateTexts_).
+//  Runs for Docs, Sheets and Slides, but only while the run has time left
+//  (GEMINI_PE_TIME_BUDGET_MS_ in Api.gs) — see ADMIN_testGeminiPostEditSpeed().
 //  A second Gemini pass that reviews/polishes every translation using a
 //  profile-specific prompt (GEMINI_PE_PROMPTS_ in Api.gs), mirroring the
 //  Post-Editing step from the AutoFix Hub project. Enabled by default
@@ -338,6 +339,51 @@ function ADMIN_testGeminiTranslation() {
     console.error("❌ Gemini-Übersetzung fehlgeschlagen: " + e.message);
     return { success: false, error: e.message };
   }
+}
+
+/**
+ * Measures how long one Gemini post-edit request (GEMINI_PE_BATCH_SIZE
+ * segments) takes WITH and WITHOUT the "thinking" switch-off, and whether
+ * the gateway accepts thinkingConfig at all. Resets the
+ * GEMINI_PE_THINKING_UNSUPPORTED flag according to the result.
+ */
+function ADMIN_testGeminiPostEditSpeed() {
+  var key  = getGeminiKey_();
+  var url  = GEMINI_BASE_URL + "/v1beta/models/" + GEMINI_PE_MODEL + ":generateContent";
+  var items = [];
+  for (var i = 0; i < GEMINI_PE_BATCH_SIZE; i++) {
+    items.push({ id: i, source: "The device must be switched off before cleaning.",
+                 target: "Das Gerät muss vor der Reinigung ausgeschaltet gemacht werden." });
+  }
+  var prompt = getPePromptForProfile_("TECHNICAL") + "\n\n=== SEGMENTE ===\n" + JSON.stringify(items) +
+    "\n\nNur valides JSON: { \"results\": [ { \"id\": <number>, \"corrected\": \"<text>\", \"changed\": true/false } ] }";
+
+  function timeIt(withThinkingOff) {
+    var cfg = { temperature: 0.3, responseMimeType: "application/json", maxOutputTokens: 8192 };
+    if (withThinkingOff) cfg.thinkingConfig = { thinkingLevel: GEMINI_PE_THINKING_LEVEL };
+    var t0  = Date.now();
+    var res = UrlFetchApp.fetch(url, {
+      method: "post", contentType: "application/json", muteHttpExceptions: true,
+      headers: { "x-api-key": key, "Accept": "application/json" },
+      payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: cfg })
+    });
+    return { ms: Date.now() - t0, code: res.getResponseCode(), body: res.getContentText().substring(0, 300) };
+  }
+
+  var normal = timeIt(false);
+  console.log("Ohne Thinking-Abschaltung: " + normal.ms + " ms (HTTP " + normal.code + ")");
+  var fast = timeIt(true);
+  console.log("Mit Thinking-Abschaltung:  " + fast.ms + " ms (HTTP " + fast.code + ")");
+
+  var props = PropertiesService.getScriptProperties();
+  if (fast.code >= 400) {
+    props.setProperty("GEMINI_PE_THINKING_UNSUPPORTED", "true");
+    console.warn("⚠️ Gateway akzeptiert thinkingConfig nicht — wird weggelassen. Antwort: " + fast.body);
+  } else {
+    props.deleteProperty("GEMINI_PE_THINKING_UNSUPPORTED");
+    console.log("✅ thinkingConfig wird akzeptiert und ist aktiv.");
+  }
+  return { withoutSwitchOffMs: normal.ms, withSwitchOffMs: fast.ms, accepted: fast.code < 400 };
 }
 
 function ADMIN_testGeminiPostEdit() {
